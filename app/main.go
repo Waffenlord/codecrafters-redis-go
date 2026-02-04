@@ -30,5 +30,15 @@ func main() {
 
 func handleConnection(c net.Conn) {
 	defer c.Close()
-	c.Write([]byte("+PONG\r\n"))
+	buf := make([]byte, 1024)
+	for {
+		n, err := c.Read(buf)
+		if err != nil {
+			break
+		}
+		if n > 0 {
+			c.Write([]byte("+PONG\r\n"))
+		}
+	}
+	
 }

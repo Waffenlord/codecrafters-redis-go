@@ -4,11 +4,28 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/codecrafters-io/redis-starter-go/app/evaluator"
+	"github.com/codecrafters-io/redis-starter-go/app/lexer"
+	"github.com/codecrafters-io/redis-starter-go/app/parser"
 )
 
-func main() {
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Println("Logs from your program will appear here!")
+func main() {	
+	/*
+		test := []byte("*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n")
+		lex := lexer.NewLexer(test)
+		par := parser.New(lex)
+		result, err := par.ParseProgram()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(result)
+		encoded, err := evaluator.EvalProgram(result)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(encoded)
+	*/
 
 	l, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {
@@ -37,8 +54,22 @@ func handleConnection(c net.Conn) {
 			break
 		}
 		if n > 0 {
-			c.Write([]byte("+PONG\r\n"))
+			lex := lexer.NewLexer(buf)
+			par := parser.New(lex)
+			result, err := par.ParseProgram()
+			if err != nil {
+				fmt.Println(err)
+				fmt.Fprintf(c, "Error ocurred while parsing: %s", err)
+				return
+			}
+			encoded, err := evaluator.EvalProgram(result)
+			if err != nil {
+				fmt.Println(err)
+				fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)
+				return
+			}
+			c.Write([]byte(encoded))
 		}
 	}
-	
+
 }

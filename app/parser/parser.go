@@ -3,6 +3,7 @@ package parser
 import (
 	"errors"
 	"strconv"
+
 	"github.com/codecrafters-io/redis-starter-go/app/lexer"
 )
 

@@ -8,6 +8,7 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/app/evaluator"
 	"github.com/codecrafters-io/redis-starter-go/app/lexer"
 	"github.com/codecrafters-io/redis-starter-go/app/parser"
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
 func main() {	
@@ -27,6 +28,8 @@ func main() {
 		fmt.Println(encoded)
 	*/
 
+	storage := storage.NewStorage()
+
 	l, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {
 		fmt.Println("Failed to bind to port 6379")
@@ -40,15 +43,15 @@ func main() {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		go handleConnection(conn)
+		go handleConnection(conn, storage)
 	}
 
 }
 
-func handleConnection(c net.Conn) {
+func handleConnection(c net.Conn, s *storage.Storage) {
 	defer c.Close()
-	buf := make([]byte, 1024)
 	for {
+		buf := make([]byte, 1024)
 		n, err := c.Read(buf)
 		if err != nil {
 			break
@@ -62,7 +65,7 @@ func handleConnection(c net.Conn) {
 				fmt.Fprintf(c, "Error ocurred while parsing: %s", err)
 				return
 			}
-			encoded, err := evaluator.EvalProgram(result)
+			encoded, err := evaluator.EvalProgram(result, s)
 			if err != nil {
 				fmt.Println(err)
 				fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)

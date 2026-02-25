@@ -8,7 +8,7 @@ import (
 
 func TestPing(t *testing.T) {
 	var buf bytes.Buffer
-	err := ping(nil, &buf, nil)
+	err := ping(nil, &buf, nil, nil)
 	if err != nil {
 		t.Errorf("Error executing ping command: %s", err)
 	}
@@ -23,7 +23,7 @@ func TestPing(t *testing.T) {
 
 func TestEcho(t *testing.T) {
 	var buf bytes.Buffer
-	err := echo(nil, &buf, []string{"Hola"})
+	err := echo(nil, &buf, []string{"Hola"}, nil)
 	if err != nil {
 		t.Errorf("Error executing echo command: %s", err)
 	}

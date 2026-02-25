@@ -6,6 +6,7 @@ import (
 
 	"github.com/codecrafters-io/redis-starter-go/app/command"
 	"github.com/codecrafters-io/redis-starter-go/app/parser"
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
 type cmdToExecute struct {
@@ -14,7 +15,7 @@ type cmdToExecute struct {
 }
 
 
-func EvalProgram(n parser.Node) (string, error) {
+func EvalProgram(n parser.Node, s *storage.Storage) (string, error) {
 	var buf bytes.Buffer
 	switch v := n.(type) {
 	case (parser.Array):
@@ -39,7 +40,7 @@ func EvalProgram(n parser.Node) (string, error) {
 
 		if len(cmdList) == 1 {
 			currentCmd := cmdList[0]
-			err := currentCmd.cmd(nil, &buf, currentCmd.args)
+			err := currentCmd.cmd(nil, &buf, currentCmd.args, s)
 			if err != nil {
 				return "", err 
 			}

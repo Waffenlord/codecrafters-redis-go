@@ -10,7 +10,7 @@ type Storage struct {
 func NewStorage() *Storage {
 	return &Storage{
 		data: make(map[string]DataNode),
-		mux: sync.RWMutex{},
+		mux:  sync.RWMutex{},
 	}
 }
 
@@ -28,4 +28,10 @@ func (s *Storage) Get(key string) (DataNode, bool) {
 		return nil, false
 	}
 	return v, true
+}
+
+func (s *Storage) Delete(key string) {
+	s.mux.Lock()
+	delete(s.data, key)
+	s.mux.Unlock()
 }

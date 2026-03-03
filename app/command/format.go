@@ -13,5 +13,5 @@ func FormatBulkString(i string) string {
 }
 
 func FormatNullBulkString() string {
-	return fmt.Sprint("$-1\r\n")
+	return "$-1\r\n"
 }

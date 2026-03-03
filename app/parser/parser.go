@@ -2,15 +2,14 @@ package parser
 
 import (
 	"errors"
-	"strconv"
-
+	"fmt"
 	"github.com/codecrafters-io/redis-starter-go/app/lexer"
+	"strconv"
 )
 
-
 type Parser struct {
-	l *lexer.Lexer
-	curToken lexer.Token
+	l         *lexer.Lexer
+	curToken  lexer.Token
 	peekToken lexer.Token
 }
 
@@ -42,7 +41,7 @@ func (p *Parser) ParseProgram() (Node, error) {
 
 func (p *Parser) parseArray() (Node, error) {
 	arr := Array{
-		Tok: p.curToken,
+		Tok:      p.curToken,
 		Elements: make([]Node, 0),
 	}
 	if p.peekToken.Type != lexer.INT {
@@ -62,7 +61,7 @@ func (p *Parser) parseArray() (Node, error) {
 	for p.curToken.Type != lexer.EOF {
 		element, err := p.ParseProgram()
 		if err != nil {
-			return nil, errors.New("error parsing array element")
+			return nil, fmt.Errorf("error parsing array element: %s", err)
 		}
 		arr.Elements = append(arr.Elements, element)
 	}
@@ -90,7 +89,7 @@ func (p *Parser) parseBulkString() (Node, error) {
 		return nil, errors.New("missing separator of the array")
 	}
 	p.nextToken()
-	if p.peekToken.Type != lexer.CMD && p.peekToken.Type != lexer.STRING {
+	if p.peekToken.Type != lexer.CMD && p.peekToken.Type != lexer.STRING && p.peekToken.Type != lexer.INT {
 		return nil, errors.New("invalid value for string")
 	}
 	p.nextToken()

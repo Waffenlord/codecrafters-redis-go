@@ -11,9 +11,10 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
-func main() {	
+func main() {
+	storage := storage.NewStorage()
 	/*
-		test := []byte("*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n")
+		test := []byte("*5\r\n$3\r\nSET\r\n$5\r\napple\r\n$9\r\npineapple\r\n$2\r\nPX\r\n$3\r\n100\r\n")
 		lex := lexer.NewLexer(test)
 		par := parser.New(lex)
 		result, err := par.ParseProgram()
@@ -21,14 +22,12 @@ func main() {
 			fmt.Println(err)
 		}
 		fmt.Println(result)
-		encoded, err := evaluator.EvalProgram(result)
+		encoded, err := evaluator.EvalProgram(result, storage)
 		if err != nil {
 			fmt.Println(err)
 		}
 		fmt.Println(encoded)
 	*/
-
-	storage := storage.NewStorage()
 
 	l, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {

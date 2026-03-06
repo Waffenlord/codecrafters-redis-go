@@ -5,39 +5,37 @@ import "strings"
 type TokenType string
 
 type Token struct {
-	Type TokenType
+	Type    TokenType
 	Literal string
 }
-
 
 const (
 	// Special characters
 	ASTERISK = "*"
-	DOLLAR = "$"
-	COLON = ":"
-	PLUS = "+"
-	RETURN = "\r"
-	NEWLINE = "\n"
+	DOLLAR   = "$"
+	COLON    = ":"
+	PLUS     = "+"
+	RETURN   = "\r"
+	NEWLINE  = "\n"
 
 	// Primitives
-	INT = "INT"
+	INT    = "INT"
 	STRING = "STRING"
 
 	// Special categories
-	CMD = "CMD"
+	CMD        = "CMD"
 	TERMINATOR = "TERMINATOR"
 
-
 	ILLEGAL = "ILLEGAL"
-	EOF = "EOF"
+	EOF     = "EOF"
 )
 
-
 var builtinKeywords = map[string]TokenType{
-	"echo": CMD,
-	"ping": CMD,
-	"set": CMD,
-	"get": CMD,
+	"echo":  CMD,
+	"ping":  CMD,
+	"set":   CMD,
+	"get":   CMD,
+	"rpush": CMD,
 }
 
 func isBuiltinCmd(s string) TokenType {
@@ -48,7 +46,6 @@ func isBuiltinCmd(s string) TokenType {
 
 	return STRING
 }
-
 
 func newToken(tokenType TokenType, literal string) Token {
 	return Token{Type: tokenType, Literal: literal}

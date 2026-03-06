@@ -122,9 +122,34 @@ func get(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	return nil
 }
 
+func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 2 {
+		return errors.New("invalid number of arguments for rpush command")
+	}
+
+	key := args[0]
+	value := args[1]
+
+	v, found := s.Get(key)
+	if !found {
+		newList := storage.NewList(value)
+		s.Set(key, newList)
+		fmt.Fprint(out, FormatInteger(newList.Len))
+		return nil
+	}
+	switch data := v.(type) {
+	case *storage.ListType:
+		newLength := data.AppendR(value)
+		fmt.Fprint(out, FormatInteger(newLength))
+		return nil
+	}
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
-	"echo": echo,
-	"ping": ping,
-	"set":  set,
-	"get":  get,
+	"echo":  echo,
+	"ping":  ping,
+	"set":   set,
+	"get":   get,
+	"rpush": rpush,
 }

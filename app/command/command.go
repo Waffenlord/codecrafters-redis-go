@@ -128,18 +128,25 @@ func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	}
 
 	key := args[0]
-	value := args[1]
+	values := args[1:]
 
 	v, found := s.Get(key)
 	if !found {
-		newList := storage.NewList(value)
+		first := values[0]
+		newList := storage.NewList(first)
+		for i := 1; i < len(values); i++ {
+			newList.AppendR(values[i])
+		}
 		s.Set(key, newList)
 		fmt.Fprint(out, FormatInteger(newList.Len))
 		return nil
 	}
 	switch data := v.(type) {
 	case *storage.ListType:
-		newLength := data.AppendR(value)
+		newLength := 0
+		for i := range values {
+			newLength = data.AppendR(values[i])
+		}
 		fmt.Fprint(out, FormatInteger(newLength))
 		return nil
 	}

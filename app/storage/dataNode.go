@@ -1,6 +1,9 @@
 package storage
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type DataNode interface {
 	isDataNode()
@@ -18,6 +21,7 @@ type ListType struct {
 	Head *ListNode
 	Tail *ListNode
 	Len  int
+	mux  sync.RWMutex
 }
 
 type ListNode struct {
@@ -36,6 +40,7 @@ func NewList(value string) *ListType {
 		Head: &firstNode,
 		Tail: &firstNode,
 		Len:  1,
+		mux:  sync.RWMutex{},
 	}
 	return &newList
 }
@@ -46,6 +51,8 @@ func (lt *ListType) AppendR(value string) int {
 		value:    value,
 		previous: currentLast,
 	}
+	lt.mux.Lock()
+	defer lt.mux.Unlock()
 	currentLast.next = &newNode
 	lt.Len++
 	lt.Tail = &newNode

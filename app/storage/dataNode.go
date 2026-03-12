@@ -46,15 +46,38 @@ func NewList(value string) *ListType {
 }
 
 func (lt *ListType) AppendR(value string) int {
-	currentLast := lt.Tail
-	newNode := ListNode{
-		value:    value,
-		previous: currentLast,
-	}
 	lt.mux.Lock()
 	defer lt.mux.Unlock()
-	currentLast.next = &newNode
+	newNode := &ListNode{
+		value:    value,
+		previous: lt.Tail,
+	}
+
+	if lt.Tail == nil {
+		lt.Head = newNode
+		lt.Tail = newNode
+	} else {
+		lt.Tail.next = newNode
+		lt.Tail = newNode
+	}
+
 	lt.Len++
-	lt.Tail = &newNode
 	return lt.Len
+}
+
+func (lt *ListType) LRange(start int, end int) []string {
+	lt.mux.RLock()
+	defer lt.mux.RUnlock()
+	currentNode := lt.Head
+	if currentNode == nil {
+		return make([]string, 0)
+	}
+	result := []string{}
+	for i := 0; i <= end; i++ {
+		if i >= start {
+			result = append(result, currentNode.value)
+		}
+		currentNode = currentNode.next
+	}
+	return result
 }

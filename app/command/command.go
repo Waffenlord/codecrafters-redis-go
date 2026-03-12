@@ -153,10 +153,62 @@ func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	return nil
 }
 
+func isRangeValid(length int, startIdx int, endIdx int) (int, int, bool) {
+	if startIdx >= length {
+		return 0, 0, false
+	}
+	if startIdx > endIdx {
+		return 0, 0, false
+	}
+	if endIdx >= length {
+		return startIdx, length - 1, true
+	}
+	return startIdx, endIdx, true
+}
+
+func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 3 {
+		return errors.New("invalid number of arguments for lrange command")
+	}
+
+	key := args[0]
+	startIdx := args[1]
+	endIdx := args[2]
+	fmt.Println(key)
+
+	startIdxInt, err := strconv.Atoi(startIdx)
+	if err != nil {
+		return errors.New("invalid value for start index")
+	}
+	endIdxInt, err := strconv.Atoi(endIdx)
+	if err != nil {
+		return errors.New("invalid value for end index")
+	}
+
+	v, found := s.Get(key)
+	if !found {
+		fmt.Fprint(out, FormatArray(make([]string, 0)))
+		return nil
+	}
+	switch data := v.(type) {
+	case *storage.ListType:
+		cleanedStartIdx, cleanedEndIdx, isValid := isRangeValid(data.Len, startIdxInt, endIdxInt)
+		if !isValid {
+			fmt.Fprint(out, FormatArray(make([]string, 0)))
+			return nil
+		}
+		result := data.LRange(cleanedStartIdx, cleanedEndIdx)
+		fmt.Fprint(out, FormatArray(result))
+
+	}
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
-	"echo":  echo,
-	"ping":  ping,
-	"set":   set,
-	"get":   get,
-	"rpush": rpush,
+	"echo":   echo,
+	"ping":   ping,
+	"set":    set,
+	"get":    get,
+	"rpush":  rpush,
+	"lrange": lrange,
 }

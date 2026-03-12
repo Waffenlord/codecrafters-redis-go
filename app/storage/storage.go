@@ -1,6 +1,8 @@
 package storage
 
-import "sync"
+import (
+	"sync"
+)
 
 type Storage struct {
 	data map[string]DataNode

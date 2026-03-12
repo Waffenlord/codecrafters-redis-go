@@ -1,6 +1,9 @@
 package command
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 func FormatSimpleString(i string) string {
 	return fmt.Sprintf("+%s\r\n", i)
@@ -17,7 +20,17 @@ func FormatNullBulkString() string {
 
 func FormatInteger(i int) string {
 	if i < 0 {
-		return fmt.Sprintf(":%s%d\r\n", "-", i)
+		return fmt.Sprintf(":%d\r\n", i)
 	}
 	return fmt.Sprintf(":%d\r\n", i)
+}
+
+func FormatArray(l []string) string {
+	var result strings.Builder
+	fmt.Println(len(l))
+	fmt.Fprintf(&result, "*%d\r\n", len(l))
+	for i := range l {
+		fmt.Fprintf(&result, "$%d\r\n%s\r\n", len(l[i]), l[i])
+	}
+	return result.String()
 }

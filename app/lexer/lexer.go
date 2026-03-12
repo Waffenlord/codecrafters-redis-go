@@ -80,13 +80,13 @@ func (l *Lexer) readNumber() string {
 }
 
 func (l *Lexer) isLetter(c byte) bool {
-	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_'
 }
 
 func (l *Lexer) readString() string {
 	startP := l.position
 	for {
-		if !l.isLetter(l.Ch) {
+		if !l.isLetter(l.Ch) && !l.isDigit(l.Ch) {
 			break
 		}
 		l.readChar()

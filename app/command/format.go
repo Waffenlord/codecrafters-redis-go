@@ -27,7 +27,6 @@ func FormatInteger(i int) string {
 
 func FormatArray(l []string) string {
 	var result strings.Builder
-	fmt.Println(len(l))
 	fmt.Fprintf(&result, "*%d\r\n", len(l))
 	for i := range l {
 		fmt.Fprintf(&result, "$%d\r\n%s\r\n", len(l[i]), l[i])

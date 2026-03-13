@@ -102,3 +102,32 @@ func TestRpush(t *testing.T) {
 		t.Error("should append multiple values to the list")
 	}
 }
+
+
+func TestIsValidRange(t *testing.T) {
+	start, end, isValid := isRangeValid(5, 0, 3)
+	if start != 0 {
+		t.Errorf("should return the same start idx. Instead it is: %d", start)
+	}
+	if end != 3 {
+		t.Errorf("should return the same end idx. Instead it is: %d", end)
+	}
+	if !isValid {
+		t.Errorf("positive interval should be valid")
+	} 
+	start, end, isValid = isRangeValid(5, 4, 3)
+	if start != 0 || end != 0 || isValid {
+		t.Errorf("should return 0 for indexes and false for validation: start %d end %d isValid %t", start, end, isValid)
+	}
+	start, end, isValid = isRangeValid(5, -4, -2)
+	if start != 1 {
+		t.Errorf("should return the correct positive start idx. Instead it is: %d", start)
+	}
+	if end != 3 {
+		t.Errorf("should return the correct positive start idx. Instead it is: %d", end)
+	}
+	if !isValid {
+		t.Errorf("negative interval should be valid")
+	}
+
+}

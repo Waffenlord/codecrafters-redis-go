@@ -26,11 +26,11 @@ func EvalProgram(n parser.Node, s *storage.Storage) (string, error) {
 			case (parser.BulkString):
 				cmd, isCmd := command.CommandMenu[strings.ToLower(t.Literal)]
 				if isCmd {
-					cmdToAdd := cmdToExecute{
+					cmdToAdd := &cmdToExecute{
 						cmd: cmd,
 						args: []string{},
 					}
-					cmdList = append(cmdList, &cmdToAdd)
+					cmdList = append(cmdList, cmdToAdd)
 				} else if len(cmdList) > 0 {
 					latestCmd := cmdList[len(cmdList) - 1]
 					latestCmd.args = append(latestCmd.args, t.Literal)

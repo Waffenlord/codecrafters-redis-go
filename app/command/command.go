@@ -154,6 +154,12 @@ func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 }
 
 func isRangeValid(length int, startIdx int, endIdx int) (int, int, bool) {
+	if startIdx < 0 {
+		startIdx = max(length+startIdx, 0)
+	}
+	if endIdx < 0 {
+		endIdx = max(length+endIdx, 0)
+	}
 	if startIdx >= length {
 		return 0, 0, false
 	}
@@ -163,6 +169,7 @@ func isRangeValid(length int, startIdx int, endIdx int) (int, int, bool) {
 	if endIdx >= length {
 		return startIdx, length - 1, true
 	}
+
 	return startIdx, endIdx, true
 }
 
@@ -174,7 +181,6 @@ func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error
 	key := args[0]
 	startIdx := args[1]
 	endIdx := args[2]
-	fmt.Println(key)
 
 	startIdxInt, err := strconv.Atoi(startIdx)
 	if err != nil {

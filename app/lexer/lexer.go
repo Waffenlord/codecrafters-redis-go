@@ -1,11 +1,10 @@
 package lexer
 
-
 type Lexer struct {
-	input []byte
-	position int
+	input        []byte
+	position     int
 	readPosition int
-	Ch byte
+	Ch           byte
 }
 
 func (l *Lexer) readChar() {
@@ -43,6 +42,15 @@ func (l *Lexer) NextToken() Token {
 		}
 	case '\n':
 		tok = newToken(NEWLINE, "\n")
+	case '-':
+		if l.readPosition < len(l.input) && l.isDigit(l.input[l.readPosition]) {
+			l.readChar()
+			tok.Type = INT
+			tok.Literal = "-" + l.readNumber()
+		} else {
+			tok.Type = ILLEGAL
+			return tok
+		}
 	case 0:
 		tok.Type = EOF
 		return tok

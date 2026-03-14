@@ -4,8 +4,6 @@ import (
 	"testing"
 )
 
-
-
 func TestLexer(t *testing.T) {
 	testInput := []byte("*2\r\n$4\r\nECHO\r\n$3\r\nhey\r\n")
 	l := NewLexer(testInput)

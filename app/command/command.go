@@ -210,6 +210,37 @@ func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error
 	return nil
 }
 
+func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 2 {
+		return errors.New("invalid number of arguments for lpush command")
+	}
+
+	key := args[0]
+	values := args[1:]
+
+	v, found := s.Get(key)
+	if !found {
+		first := values[0]
+		newList := storage.NewList(first)
+		for i := 1; i < len(values); i++ {
+			newList.AppendL(values[i])
+		}
+		s.Set(key, newList)
+		fmt.Fprint(out, FormatInteger(newList.Len))
+		return nil
+	}
+	switch data := v.(type) {
+	case *storage.ListType:
+		newLength := 0
+		for i := range values {
+			newLength = data.AppendL(values[i])
+		}
+		fmt.Fprint(out, FormatInteger(newLength))
+		return nil
+	}
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":   echo,
 	"ping":   ping,
@@ -217,4 +248,5 @@ var CommandMenu = map[string]Builtin{
 	"get":    get,
 	"rpush":  rpush,
 	"lrange": lrange,
+	"lpush":  lpush,
 }

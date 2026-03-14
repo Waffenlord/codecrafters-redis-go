@@ -103,7 +103,6 @@ func TestRpush(t *testing.T) {
 	}
 }
 
-
 func TestIsValidRange(t *testing.T) {
 	start, end, isValid := isRangeValid(5, 0, 3)
 	if start != 0 {
@@ -114,7 +113,7 @@ func TestIsValidRange(t *testing.T) {
 	}
 	if !isValid {
 		t.Errorf("positive interval should be valid")
-	} 
+	}
 	start, end, isValid = isRangeValid(5, 4, 3)
 	if start != 0 || end != 0 || isValid {
 		t.Errorf("should return 0 for indexes and false for validation: start %d end %d isValid %t", start, end, isValid)

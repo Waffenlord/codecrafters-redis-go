@@ -65,6 +65,25 @@ func (lt *ListType) AppendR(value string) int {
 	return lt.Len
 }
 
+func (lt *ListType) AppendL(value string) int {
+	lt.mux.Lock()
+	defer lt.mux.Unlock()
+	newNode := &ListNode{
+		value: value,
+		next:  lt.Head,
+	}
+
+	if lt.Head == nil {
+		lt.Head = newNode
+		lt.Tail = newNode
+	} else {
+		lt.Head.previous = newNode
+		lt.Head = newNode
+	}
+	lt.Len++
+	return lt.Len
+}
+
 func (lt *ListType) LRange(start int, end int) []string {
 	lt.mux.RLock()
 	defer lt.mux.RUnlock()

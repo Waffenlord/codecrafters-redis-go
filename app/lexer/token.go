@@ -31,12 +31,13 @@ const (
 )
 
 var builtinKeywords = map[string]TokenType{
-	"echo":  CMD,
-	"ping":  CMD,
-	"set":   CMD,
-	"get":   CMD,
-	"rpush": CMD,
+	"echo":   CMD,
+	"ping":   CMD,
+	"set":    CMD,
+	"get":    CMD,
+	"rpush":  CMD,
 	"lrange": CMD,
+	"lpush":  CMD,
 }
 
 func isBuiltinCmd(s string) TokenType {

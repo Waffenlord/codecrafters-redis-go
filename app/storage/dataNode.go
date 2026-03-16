@@ -101,17 +101,22 @@ func (lt *ListType) LRange(start int, end int) []string {
 	return result
 }
 
-func (lt *ListType) Lpop() string {
+func (lt *ListType) Lpop(n int) []string {
 	lt.Mux.Lock()
 	defer lt.Mux.Unlock()
-	if lt.Head == nil {
-		return ""
+	limit := min(n, lt.Len)
+	result := []string{}
+	for range limit {
+		if lt.Head == nil {
+			return result
+		}
+		node := lt.Head
+		lt.Head = lt.Head.next
+		if lt.Head != nil {
+			lt.Head.previous = nil
+		}
+		lt.Len--
+		result = append(result, node.value)
 	}
-	node := lt.Head
-	lt.Head = lt.Head.next
-	if lt.Head != nil {
-		lt.Head.previous = nil
-	}
-	lt.Len--
-	return node.value
+	return result
 }

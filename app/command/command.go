@@ -286,8 +286,20 @@ func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 			fmt.Fprint(out, FormatNullBulkString())
 			return nil
 		}
-		result := data.Lpop()
-		fmt.Fprint(out, FormatBulkString(result))
+		n := 1
+		var err error
+		if len(args) > 1 {
+			n, err = strconv.Atoi(args[1])
+			if err != nil {
+				return fmt.Errorf("invalid value for number of items to extract: %s", err)
+			}
+		}
+		result := data.Lpop(n)
+		if len(result) > 1 {
+			fmt.Fprint(out, FormatArray(result))
+		} else {
+			fmt.Fprint(out, FormatBulkString(result[0]))
+		}
 		return nil
 	default:
 		return errors.New("value stored should be a list")

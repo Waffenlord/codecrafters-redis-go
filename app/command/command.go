@@ -268,6 +268,32 @@ func llen(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	}
 }
 
+func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 1 {
+		return errors.New("invalid number of arguments for lpop command")
+	}
+
+	key := args[0]
+
+	v, found := s.Get(key)
+	if !found {
+		fmt.Fprint(out, FormatNullBulkString())
+		return nil
+	}
+	switch data := v.(type) {
+	case *storage.ListType:
+		if data.Len == 0 {
+			fmt.Fprint(out, FormatNullBulkString())
+			return nil
+		}
+		result := data.Lpop()
+		fmt.Fprint(out, FormatBulkString(result))
+		return nil
+	default:
+		return errors.New("value stored should be a list")
+	}
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":   echo,
 	"ping":   ping,
@@ -277,4 +303,5 @@ var CommandMenu = map[string]Builtin{
 	"lrange": lrange,
 	"lpush":  lpush,
 	"llen":   llen,
+	"lpop":   lpop,
 }

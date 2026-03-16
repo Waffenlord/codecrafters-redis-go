@@ -172,3 +172,27 @@ func TestLpush(t *testing.T) {
 		t.Error("should append multiple values to the list")
 	}
 }
+
+func TestLlen(t *testing.T) {
+	var buf bytes.Buffer
+	s := storage.NewStorage()
+	err := llen(nil, &buf, []string{}, s)
+	if err == nil {
+		t.Error("should throw an error for invalid number of arguments")
+	}
+	err = llen(nil, &buf, []string{"missing"}, s)
+	if err != nil || buf.String() != FormatInteger(0) {
+		t.Error("should return 0 for missing key")
+	}
+	buf.Reset()
+	err = rpush(nil, &buf, []string{"key1", "value1", "value2"}, s)
+	if err != nil || buf.String() != FormatInteger(2) {
+		t.Error("should create the list and append the values to the list")
+	}
+	buf.Reset()
+	err = llen(nil, &buf, []string{"key1"}, s)
+	if err != nil || buf.String() != FormatInteger(2) {
+		t.Error("should return 2 as the length of the list")
+	}
+
+}

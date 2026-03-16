@@ -100,3 +100,18 @@ func (lt *ListType) LRange(start int, end int) []string {
 	}
 	return result
 }
+
+func (lt *ListType) Lpop() string {
+	lt.Mux.Lock()
+	defer lt.Mux.Unlock()
+	if lt.Head == nil {
+		return ""
+	}
+	node := lt.Head
+	lt.Head = lt.Head.next
+	if lt.Head != nil {
+		lt.Head.previous = nil
+	}
+	lt.Len--
+	return node.value
+}

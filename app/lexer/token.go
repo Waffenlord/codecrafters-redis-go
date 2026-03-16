@@ -39,6 +39,7 @@ var builtinKeywords = map[string]TokenType{
 	"lrange": CMD,
 	"lpush":  CMD,
 	"llen":   CMD,
+	"lpop":   CMD,
 }
 
 func isBuiltinCmd(s string) TokenType {

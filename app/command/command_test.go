@@ -130,3 +130,45 @@ func TestIsValidRange(t *testing.T) {
 	}
 
 }
+
+func TestLRange(t *testing.T) {
+	var buf bytes.Buffer
+	s := storage.NewStorage()
+	err := rpush(nil, &buf, []string{"key1", "value1", "value2"}, s)
+	if err != nil || buf.String() != FormatInteger(2) {
+		t.Error("should create the list and append the values to the list")
+	}
+	buf.Reset()
+	err = lrange(nil, &buf, []string{}, s)
+	if err == nil {
+		t.Error("should throw an error for invalid number of arguments")
+	}
+	err = lrange(nil, &buf, []string{"key1", "0", "1"}, s)
+	if err != nil || buf.String() != FormatArray([]string{"value1", "value2"}) {
+		t.Error("should return the elements of the range provided")
+	}
+	buf.Reset()
+	err = lrange(nil, &buf, []string{"key2", "0", "1"}, s)
+	if err != nil || buf.String() != FormatArray(make([]string, 0)) {
+		t.Error("should return null for missing key")
+	}
+	buf.Reset()
+}
+
+func TestLpush(t *testing.T) {
+	var buf bytes.Buffer
+	s := storage.NewStorage()
+	err := lpush(nil, &buf, []string{"key1"}, s)
+	if err == nil {
+		t.Error("should throw an error for invalid number of arguments")
+	}
+	err = lpush(nil, &buf, []string{"key2", "value1"}, s)
+	if err != nil || buf.String() != FormatInteger(1) {
+		t.Error("should create the list and append the value to the list")
+	}
+	buf.Reset()
+	err = lpush(nil, &buf, []string{"key2", "value2", "value3"}, s)
+	if err != nil || buf.String() != FormatInteger(3) {
+		t.Error("should append multiple values to the list")
+	}
+}

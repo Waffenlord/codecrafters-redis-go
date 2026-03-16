@@ -149,8 +149,9 @@ func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 		}
 		fmt.Fprint(out, FormatInteger(newLength))
 		return nil
+	default:
+		return errors.New("value stored should be a list")
 	}
-	return nil
 }
 
 func isRangeValid(length int, startIdx int, endIdx int) (int, int, bool) {
@@ -205,9 +206,10 @@ func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error
 		}
 		result := data.LRange(cleanedStartIdx, cleanedEndIdx)
 		fmt.Fprint(out, FormatArray(result))
-
+		return nil
+	default:
+		return errors.New("value stored should be a list")
 	}
-	return nil
 }
 
 func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
@@ -237,8 +239,33 @@ func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 		}
 		fmt.Fprint(out, FormatInteger(newLength))
 		return nil
+	default:
+		return errors.New("value stored should be a list")
 	}
-	return nil
+}
+
+func llen(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 1 {
+		return errors.New("invalid number of arguments for llen command")
+	}
+
+	key := args[0]
+
+	v, found := s.Get(key)
+	if !found {
+		fmt.Fprint(out, FormatInteger(0))
+		return nil
+	}
+
+	switch data := v.(type) {
+	case *storage.ListType:
+		data.Mux.RLock()
+		defer data.Mux.RUnlock()
+		fmt.Fprint(out, FormatInteger(data.Len))
+		return nil
+	default:
+		return errors.New("value stored should be a list")
+	}
 }
 
 var CommandMenu = map[string]Builtin{
@@ -249,4 +276,5 @@ var CommandMenu = map[string]Builtin{
 	"rpush":  rpush,
 	"lrange": lrange,
 	"lpush":  lpush,
+	"llen":   llen,
 }

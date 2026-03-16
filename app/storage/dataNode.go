@@ -21,7 +21,7 @@ type ListType struct {
 	Head *ListNode
 	Tail *ListNode
 	Len  int
-	mux  sync.RWMutex
+	Mux  sync.RWMutex
 }
 
 type ListNode struct {
@@ -40,14 +40,14 @@ func NewList(value string) *ListType {
 		Head: &firstNode,
 		Tail: &firstNode,
 		Len:  1,
-		mux:  sync.RWMutex{},
+		Mux:  sync.RWMutex{},
 	}
 	return &newList
 }
 
 func (lt *ListType) AppendR(value string) int {
-	lt.mux.Lock()
-	defer lt.mux.Unlock()
+	lt.Mux.Lock()
+	defer lt.Mux.Unlock()
 	newNode := &ListNode{
 		value:    value,
 		previous: lt.Tail,
@@ -66,8 +66,8 @@ func (lt *ListType) AppendR(value string) int {
 }
 
 func (lt *ListType) AppendL(value string) int {
-	lt.mux.Lock()
-	defer lt.mux.Unlock()
+	lt.Mux.Lock()
+	defer lt.Mux.Unlock()
 	newNode := &ListNode{
 		value: value,
 		next:  lt.Head,
@@ -85,8 +85,8 @@ func (lt *ListType) AppendL(value string) int {
 }
 
 func (lt *ListType) LRange(start int, end int) []string {
-	lt.mux.RLock()
-	defer lt.mux.RUnlock()
+	lt.Mux.RLock()
+	defer lt.Mux.RUnlock()
 	currentNode := lt.Head
 	if currentNode == nil {
 		return make([]string, 0)

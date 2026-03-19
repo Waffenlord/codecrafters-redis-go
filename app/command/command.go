@@ -132,19 +132,27 @@ func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 
 	v, found := s.Get(key)
 	if !found {
-		first := values[0]
-		newList := storage.NewList(first)
-		for i := 1; i < len(values); i++ {
-			newList.AppendR(values[i])
+		newList := storage.NewList()
+		listLength := 0
+		for i := range values {
+			if s.Blocker.NotifyClient(key, values[i]) {
+				listLength++
+				continue
+			}
+			listLength = newList.AppendR(values[i])
 		}
 		s.Set(key, newList)
-		fmt.Fprint(out, FormatInteger(newList.Len))
+		fmt.Fprint(out, FormatInteger(listLength))
 		return nil
 	}
 	switch data := v.(type) {
 	case *storage.ListType:
 		newLength := 0
 		for i := range values {
+			if s.Blocker.NotifyClient(key, values[i]) {
+				newLength++
+				continue
+			}
 			newLength = data.AppendR(values[i])
 		}
 		fmt.Fprint(out, FormatInteger(newLength))
@@ -222,19 +230,27 @@ func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 
 	v, found := s.Get(key)
 	if !found {
-		first := values[0]
-		newList := storage.NewList(first)
-		for i := 1; i < len(values); i++ {
-			newList.AppendL(values[i])
+		newList := storage.NewList()
+		listLength := 0
+		for i := range values {
+			if s.Blocker.NotifyClient(key, values[i]) {
+				listLength++
+				continue
+			}
+			listLength = newList.AppendL(values[i])
 		}
 		s.Set(key, newList)
-		fmt.Fprint(out, FormatInteger(newList.Len))
+		fmt.Fprint(out, FormatInteger(listLength))
 		return nil
 	}
 	switch data := v.(type) {
 	case *storage.ListType:
 		newLength := 0
 		for i := range values {
+			if s.Blocker.NotifyClient(key, values[i]) {
+				newLength++
+				continue
+			}
 			newLength = data.AppendL(values[i])
 		}
 		fmt.Fprint(out, FormatInteger(newLength))
@@ -306,6 +322,46 @@ func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	}
 }
 
+func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 2 {
+		return errors.New("invalid number of arguments for blpop command")
+	}
+
+	key := args[0]
+	timeout := args[1]
+
+	timeoutInt, err := strconv.Atoi(timeout)
+	if err != nil {
+		return fmt.Errorf("invalid value for timeout: %s", err)
+	}
+
+	data, found := s.Get(key)
+	if found {
+		if list, ok := data.(*storage.ListType); ok && list.Len > 0 {
+			values := list.Lpop(1)
+			fmt.Fprint(out, FormatArray([]string{key, values[0]}))
+			return nil
+		}
+	}
+
+	ch := s.Blocker.BlockedByKey(key)
+
+	if timeoutInt == 0 {
+		v := <-ch
+		fmt.Fprint(out, FormatArray([]string{key, v}))
+		return nil
+	} else {
+		select {
+		case v := <-ch:
+			fmt.Fprint(out, FormatArray([]string{key, v}))
+			return nil
+		case <-time.After(time.Duration(timeoutInt) * time.Second):
+			fmt.Fprint(out, FormatNullArray())
+			return nil
+		}
+	}
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":   echo,
 	"ping":   ping,
@@ -316,4 +372,5 @@ var CommandMenu = map[string]Builtin{
 	"lpush":  lpush,
 	"llen":   llen,
 	"lpop":   lpop,
+	"blpop":  blpop,
 }

@@ -33,3 +33,7 @@ func FormatArray(l []string) string {
 	}
 	return result.String()
 }
+
+func FormatNullArray() string {
+	return "*-1\r\n"
+}

@@ -5,14 +5,16 @@ import (
 )
 
 type Storage struct {
-	data map[string]DataNode
-	mux  sync.RWMutex
+	data    map[string]DataNode
+	mux     sync.RWMutex
+	Blocker *BlockerManager
 }
 
 func NewStorage() *Storage {
 	return &Storage{
-		data: make(map[string]DataNode),
-		mux:  sync.RWMutex{},
+		data:    make(map[string]DataNode),
+		mux:     sync.RWMutex{},
+		Blocker: NewBlockerManager(),
 	}
 }
 

@@ -32,17 +32,12 @@ type ListNode struct {
 
 func (lt *ListType) isDataNode() {}
 
-func NewList(value string) *ListType {
-	firstNode := ListNode{
-		value: value,
+func NewList() *ListType {
+	newList := &ListType{
+		Len: 0,
+		Mux: sync.RWMutex{},
 	}
-	newList := ListType{
-		Head: &firstNode,
-		Tail: &firstNode,
-		Len:  1,
-		Mux:  sync.RWMutex{},
-	}
-	return &newList
+	return newList
 }
 
 func (lt *ListType) AppendR(value string) int {

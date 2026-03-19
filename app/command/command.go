@@ -326,11 +326,10 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	if len(args) < 2 {
 		return errors.New("invalid number of arguments for blpop command")
 	}
-
 	key := args[0]
 	timeout := args[1]
 
-	timeoutInt, err := strconv.Atoi(timeout)
+	timeoutFloat, err := strconv.ParseFloat(timeout, 32)
 	if err != nil {
 		return fmt.Errorf("invalid value for timeout: %s", err)
 	}
@@ -346,7 +345,7 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 
 	ch := s.Blocker.BlockedByKey(key)
 
-	if timeoutInt == 0 {
+	if timeout == "0" {
 		v := <-ch
 		fmt.Fprint(out, FormatArray([]string{key, v}))
 		return nil
@@ -355,7 +354,7 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 		case v := <-ch:
 			fmt.Fprint(out, FormatArray([]string{key, v}))
 			return nil
-		case <-time.After(time.Duration(timeoutInt) * time.Second):
+		case <-time.After(time.Duration(timeoutFloat * float64(time.Second))):
 			fmt.Fprint(out, FormatNullArray())
 			return nil
 		}

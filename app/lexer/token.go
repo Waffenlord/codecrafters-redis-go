@@ -40,7 +40,7 @@ var builtinKeywords = map[string]TokenType{
 	"lpush":  CMD,
 	"llen":   CMD,
 	"lpop":   CMD,
-	"blpop": CMD,
+	"blpop":  CMD,
 }
 
 func isBuiltinCmd(s string) TokenType {

@@ -79,7 +79,7 @@ func (l *Lexer) isDigit(c byte) bool {
 func (l *Lexer) readNumber() string {
 	startP := l.position
 	for {
-		if !l.isDigit(l.Ch) {
+		if !l.isDigit(l.Ch) && l.Ch != '.' {
 			break
 		}
 		l.readChar()

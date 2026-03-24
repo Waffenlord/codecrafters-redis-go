@@ -361,6 +361,29 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	}
 }
 
+func typeCmd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 1 {
+		return errors.New("invalid number of arguments for type command")
+	}
+
+	key := args[0]
+	v, found := s.Get(key)
+	if !found {
+		fmt.Fprint(out, FormatSimpleString("none"))
+		return nil
+	}
+
+	switch v.(type) {
+	case *storage.StringType:
+		fmt.Fprint(out, FormatSimpleString("string"))
+	case *storage.ListType:
+		fmt.Fprint(out, FormatSimpleString("list"))
+	default:
+		fmt.Fprint(out, FormatSimpleString("none"))
+	}
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":   echo,
 	"ping":   ping,
@@ -372,4 +395,5 @@ var CommandMenu = map[string]Builtin{
 	"llen":   llen,
 	"lpop":   lpop,
 	"blpop":  blpop,
+	"type":   typeCmd,
 }

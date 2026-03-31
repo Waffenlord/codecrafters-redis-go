@@ -25,6 +25,7 @@ const (
 	// Special categories
 	CMD        = "CMD"
 	TERMINATOR = "TERMINATOR"
+	STREAM_ID  = "STREAM_ID"
 
 	ILLEGAL = "ILLEGAL"
 	EOF     = "EOF"
@@ -42,6 +43,7 @@ var builtinKeywords = map[string]TokenType{
 	"lpop":   CMD,
 	"blpop":  CMD,
 	"type":   CMD,
+	"xadd":   CMD,
 }
 
 func isBuiltinCmd(s string) TokenType {

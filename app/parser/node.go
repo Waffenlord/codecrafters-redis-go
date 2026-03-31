@@ -7,21 +7,21 @@ type Node interface {
 }
 
 type Array struct {
-	Tok lexer.Token
+	Tok      lexer.Token
 	Elements []Node
-	Length int
+	Length   int
 }
 
-func(a Array) GetToken() lexer.Token {
+func (a Array) GetToken() lexer.Token {
 	return a.Tok
 }
 
 type BulkString struct {
-	Tok lexer.Token
+	Tok     lexer.Token
 	Literal string
-	Length int
+	Length  int
 }
 
-func(b BulkString) GetToken() lexer.Token {
+func (b BulkString) GetToken() lexer.Token {
 	return b.Tok
 }

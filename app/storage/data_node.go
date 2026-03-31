@@ -115,3 +115,111 @@ func (lt *ListType) Lpop(n int) []string {
 	}
 	return result
 }
+
+type StreamType struct {
+	Tree *RadixNode
+	mux  sync.RWMutex
+}
+
+type RadixNode struct {
+	Key   string
+	Edges []Edge
+	IsEnd bool
+	Value []string
+}
+
+type Edge struct {
+	label byte
+	child *RadixNode
+}
+
+func (st *StreamType) isDataNode() {}
+
+func NewStreamType(n *RadixNode) *StreamType {
+	return &StreamType{
+		Tree: n,
+		mux:  sync.RWMutex{},
+	}
+}
+
+func (st *StreamType) findEdgePosition(label byte, rn *RadixNode) (int, bool) {
+	low := 0
+	high := len(rn.Edges) - 1
+
+	for low < high {
+		mid := low + high/2
+		if rn.Edges[mid].label < label {
+			low = mid + 1
+		} else {
+			high = mid
+		}
+
+	}
+
+	if low < len(rn.Edges) && rn.Edges[low].label == label {
+		return low, true
+	}
+
+	return low, false
+}
+
+func (st *StreamType) addEdge(e Edge, rn *RadixNode) {
+	idx, found := st.findEdgePosition(e.label, rn)
+	if found {
+		rn.Edges[idx] = e
+		return
+	}
+
+	rn.Edges = append(rn.Edges, Edge{})
+	copy(rn.Edges[idx+1:], rn.Edges[idx:])
+	rn.Edges[idx] = e
+}
+
+func (st *StreamType) Insert(n *RadixNode, key string, value []string) {
+	st.mux.Lock()
+	defer st.mux.Unlock()
+	for {
+		common := lcp(n.Key, key)
+
+		if common < len(n.Key) {
+			child := &RadixNode{
+				Key:   n.Key[common:],
+				Edges: n.Edges,
+				IsEnd: n.IsEnd,
+				Value: n.Value,
+			}
+
+			n.Key = n.Key[:common]
+			n.Edges = nil
+			n.IsEnd = false
+			n.Value = nil
+
+			st.addEdge(Edge{
+				label: child.Key[0],
+				child: child,
+			}, n)
+		}
+
+		if common == len(n.Key) {
+			n.IsEnd = true
+			n.Value = value
+			return
+		}
+
+		key = key[common:]
+
+		label := key[0]
+		idx, found := st.findEdgePosition(label, n)
+		if !found {
+			newNode := &RadixNode{
+				Key:   key,
+				IsEnd: true,
+				Value: value,
+			}
+			st.addEdge(Edge{label: label, child: newNode}, n)
+			return
+		}
+
+		n = n.Edges[idx].child
+	}
+}

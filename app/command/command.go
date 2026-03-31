@@ -378,10 +378,48 @@ func typeCmd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) erro
 		fmt.Fprint(out, FormatSimpleString("string"))
 	case *storage.ListType:
 		fmt.Fprint(out, FormatSimpleString("list"))
+	case *storage.StreamType:
+		fmt.Fprint(out, FormatSimpleString("stream"))
 	default:
 		fmt.Fprint(out, FormatSimpleString("none"))
 	}
 	return nil
+}
+
+func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 4 {
+		return errors.New("invalid number of arguments for xadd command")
+	}
+
+	key := args[0]
+	id := args[1]
+	values := args[2:]
+
+	if len(values)%2 != 0 {
+		return errors.New("values need to be key value pairs")
+	}
+
+	v, found := s.Get(key)
+	if !found {
+		st := storage.NewStreamType(&storage.RadixNode{
+			Key:   id,
+			IsEnd: true,
+			Value: values,
+			Edges: nil,
+		})
+		s.Set(key, st)
+		fmt.Fprint(out, FormatBulkString(id))
+		return nil
+	}
+
+	switch data := v.(type) {
+	case *storage.StreamType:
+		data.Insert(data.Tree, id, values)
+		fmt.Fprint(out, FormatBulkString(id))
+		return nil
+	default:
+		return errors.New("value stored should be a stream")
+	}
 }
 
 var CommandMenu = map[string]Builtin{
@@ -396,4 +434,5 @@ var CommandMenu = map[string]Builtin{
 	"lpop":   lpop,
 	"blpop":  blpop,
 	"type":   typeCmd,
+	"xadd":   xadd,
 }

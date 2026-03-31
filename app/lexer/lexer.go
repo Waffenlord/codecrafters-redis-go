@@ -46,7 +46,12 @@ func (l *Lexer) NextToken() Token {
 		if l.readPosition < len(l.input) && l.isDigit(l.input[l.readPosition]) {
 			l.readChar()
 			tok.Type = INT
-			tok.Literal = "-" + l.readNumber()
+			num, isStreamId := l.readNumber()
+			if isStreamId {
+				tok.Type = ILLEGAL
+				return tok
+			}
+			tok.Literal = "-" + num
 		} else {
 			tok.Type = ILLEGAL
 			return tok
@@ -57,7 +62,11 @@ func (l *Lexer) NextToken() Token {
 	default:
 		if l.isDigit(l.Ch) {
 			tok.Type = INT
-			tok.Literal = l.readNumber()
+			num, isStreamId := l.readNumber()
+			if isStreamId {
+				tok.Type = STREAM_ID
+			}
+			tok.Literal = num
 			return tok
 		} else if l.isLetter(l.Ch) {
 			tok.Literal = l.readString()
@@ -76,15 +85,19 @@ func (l *Lexer) isDigit(c byte) bool {
 	return '0' <= c && c <= '9'
 }
 
-func (l *Lexer) readNumber() string {
+func (l *Lexer) readNumber() (string, bool) {
 	startP := l.position
+	isStreamId := false
 	for {
-		if !l.isDigit(l.Ch) && l.Ch != '.' {
+		if !l.isDigit(l.Ch) && l.Ch != '.' && l.Ch != '-' {
 			break
+		}
+		if l.Ch == '-' {
+			isStreamId = true
 		}
 		l.readChar()
 	}
-	return string(l.input[startP:l.position])
+	return string(l.input[startP:l.position]), isStreamId
 }
 
 func (l *Lexer) isLetter(c byte) bool {

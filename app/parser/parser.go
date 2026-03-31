@@ -3,14 +3,16 @@ package parser
 import (
 	"errors"
 	"fmt"
-	"github.com/codecrafters-io/redis-starter-go/app/lexer"
 	"strconv"
+
+	"github.com/codecrafters-io/redis-starter-go/app/lexer"
 )
 
 type Parser struct {
-	l         *lexer.Lexer
-	curToken  lexer.Token
-	peekToken lexer.Token
+	l                *lexer.Lexer
+	curToken         lexer.Token
+	peekToken        lexer.Token
+	validStringTypes map[lexer.TokenType]struct{}
 }
 
 func (p *Parser) nextToken() {
@@ -21,6 +23,12 @@ func (p *Parser) nextToken() {
 func New(lx *lexer.Lexer) *Parser {
 	p := &Parser{
 		l: lx,
+		validStringTypes: map[lexer.TokenType]struct{}{
+			lexer.CMD:       {},
+			lexer.STRING:    {},
+			lexer.INT:       {},
+			lexer.STREAM_ID: {},
+		},
 	}
 
 	p.nextToken()
@@ -89,7 +97,7 @@ func (p *Parser) parseBulkString() (Node, error) {
 		return nil, errors.New("missing separator of the array")
 	}
 	p.nextToken()
-	if p.peekToken.Type != lexer.CMD && p.peekToken.Type != lexer.STRING && p.peekToken.Type != lexer.INT {
+	if _, ok := p.validStringTypes[p.peekToken.Type]; !ok {
 		return nil, errors.New("invalid value for string")
 	}
 	p.nextToken()

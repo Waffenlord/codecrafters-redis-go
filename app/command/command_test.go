@@ -2,7 +2,9 @@ package command
 
 import (
 	"bytes"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
@@ -195,4 +197,91 @@ func TestLlen(t *testing.T) {
 		t.Error("should return 2 as the length of the list")
 	}
 
+}
+
+func TestLpop(t *testing.T) {
+	var buf bytes.Buffer
+	s := storage.NewStorage()
+	err := rpush(nil, &buf, []string{"key1", "value1", "value2"}, s)
+	if err != nil || buf.String() != FormatInteger(2) {
+		t.Error("should create the list and append the values to the list")
+	}
+	buf.Reset()
+	err = lpop(nil, &buf, []string{"key1"}, s)
+	if err != nil {
+		t.Error("error while removing first item")
+	}
+	if buf.String() != FormatBulkString("value1") {
+		t.Error("invalid format for removed value")
+	}
+}
+
+func TestBlpop(t *testing.T) {
+	var listBuf bytes.Buffer
+	s := storage.NewStorage()
+	wg := sync.WaitGroup{}
+	var resultWithoutTimeout string
+	var resultWithTimeout string
+
+	wg.Go(func() {
+		var blpopBuf bytes.Buffer
+		err := blpop(nil, &blpopBuf, []string{"key1", "0"}, s)
+		if err != nil {
+			t.Error("error ocurred while removing item with 0 timeout")
+		}
+		resultWithoutTimeout = blpopBuf.String()
+	})
+	time.Sleep(time.Second * 1)
+	err := rpush(nil, &listBuf, []string{"key1", "value1"}, s)
+	if err != nil || listBuf.String() != FormatInteger(1) {
+		t.Errorf("error while pushing a new item. err: %s, value: %s", err, listBuf.String())
+	}
+	wg.Wait()
+	if resultWithoutTimeout != FormatArray([]string{"key1", "value1"}) {
+		t.Errorf("should return the value recently pushed. value: %s", resultWithoutTimeout)
+	}
+	listBuf.Reset()
+
+	wg.Go(func() {
+		var blpopBuf2 bytes.Buffer
+		err := blpop(nil, &blpopBuf2, []string{"key1", "4"}, s)
+		if err != nil {
+			t.Error("error ocurred while removing item with 4 sec timeout")
+		}
+		resultWithTimeout = blpopBuf2.String()
+	})
+	time.Sleep(time.Second * 2)
+	err = rpush(nil, &listBuf, []string{"key1", "value2"}, s)
+	if err != nil || listBuf.String() != FormatInteger(1) {
+		t.Errorf("error while pushing a new item. err: %s, value: %s", err, listBuf.String())
+	}
+	wg.Wait()
+	if resultWithTimeout != FormatArray([]string{"key1", "value2"}) {
+		t.Errorf("should return the value recently pushed after the timeout. value: %s", resultWithTimeout)
+	}
+}
+
+func TestType(t *testing.T) {
+	s := storage.NewStorage()
+	var resultBuf bytes.Buffer
+
+	err := set(nil, &resultBuf, []string{"key1", "value1"}, s)
+	if err != nil || resultBuf.String() != FormatSimpleString("OK") {
+		t.Error("error ocurred while setting a string value")
+	}
+	resultBuf.Reset()
+	err = typeCmd(nil, &resultBuf, []string{"key1"}, s)
+	if err != nil || resultBuf.String() != FormatSimpleString("string") {
+		t.Error("invalid type for string")
+	}
+	resultBuf.Reset()
+	err = rpush(nil, &resultBuf, []string{"key2", "value2"}, s)
+	if err != nil || resultBuf.String() != FormatInteger(1) {
+		t.Error("error ocurred while appending a value to list")
+	}
+	resultBuf.Reset()
+	err = typeCmd(nil, &resultBuf, []string{"key2"}, s)
+	if err != nil || resultBuf.String() != FormatSimpleString("list") {
+		t.Error("invalid type for list")
+	}
 }

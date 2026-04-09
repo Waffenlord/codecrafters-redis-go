@@ -117,8 +117,9 @@ func (lt *ListType) Lpop(n int) []string {
 }
 
 type StreamType struct {
-	Tree *RadixNode
-	mux  sync.RWMutex
+	Tree        *RadixNode
+	mux         sync.RWMutex
+	LastEntryId string
 }
 
 type RadixNode struct {
@@ -135,10 +136,9 @@ type Edge struct {
 
 func (st *StreamType) isDataNode() {}
 
-func NewStreamType(n *RadixNode) *StreamType {
+func NewStreamType() *StreamType {
 	return &StreamType{
-		Tree: n,
-		mux:  sync.RWMutex{},
+		mux: sync.RWMutex{},
 	}
 }
 
@@ -176,8 +176,6 @@ func (st *StreamType) addEdge(e Edge, rn *RadixNode) {
 }
 
 func (st *StreamType) Insert(n *RadixNode, key string, value []string) {
-	st.mux.Lock()
-	defer st.mux.Unlock()
 	for {
 		common := lcp(n.Key, key)
 
@@ -222,4 +220,31 @@ func (st *StreamType) Insert(n *RadixNode, key string, value []string) {
 
 		n = n.Edges[idx].child
 	}
+}
+
+func (st *StreamType) Add(key string, value []string) (string, error) {
+	st.mux.Lock()
+	defer st.mux.Unlock()
+	if st.Tree == nil {
+		validId, err := isStreamEntryIdValid(key, "0-0")
+		if err != nil {
+			return "", err
+		}
+		st.Tree = &RadixNode{
+			Key:   validId,
+			IsEnd: true,
+			Value: value,
+			Edges: nil,
+		}
+		st.LastEntryId = validId
+		return validId, nil
+	}
+
+	validId, err := isStreamEntryIdValid(key, st.LastEntryId)
+	if err != nil {
+		return "", err
+	}
+	st.Insert(st.Tree, validId, value)
+	st.LastEntryId = validId
+	return validId, nil
 }

@@ -338,8 +338,11 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	if found {
 		if list, ok := data.(*storage.ListType); ok && list.Len > 0 {
 			values := list.Lpop(1)
-			fmt.Fprint(out, FormatArray([]string{key, values[0]}))
-			return nil
+			if len(values) > 0 {
+				fmt.Fprint(out, FormatArray([]string{key, values[0]}))
+				return nil
+			}
+
 		}
 	}
 
@@ -401,20 +404,18 @@ func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 
 	v, found := s.Get(key)
 	if !found {
-		st := storage.NewStreamType(&storage.RadixNode{
-			Key:   id,
-			IsEnd: true,
-			Value: values,
-			Edges: nil,
-		})
+		st := storage.NewStreamType()
 		s.Set(key, st)
-		fmt.Fprint(out, FormatBulkString(id))
-		return nil
+		v = st
 	}
 
 	switch data := v.(type) {
 	case *storage.StreamType:
-		data.Insert(data.Tree, id, values)
+		id, err := data.Add(id, values)
+		if err != nil {
+			fmt.Fprint(out, FormatSimpleError(genericError, err.Error()))
+			return nil
+		}
 		fmt.Fprint(out, FormatBulkString(id))
 		return nil
 	default:

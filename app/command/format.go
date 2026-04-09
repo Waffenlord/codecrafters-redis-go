@@ -37,3 +37,13 @@ func FormatArray(l []string) string {
 func FormatNullArray() string {
 	return "*-1\r\n"
 }
+
+type ErrorType string
+
+const (
+	genericError ErrorType = "ERR"
+)
+
+func FormatSimpleError(errorType ErrorType, message string) string {
+	return fmt.Sprintf("-%s %s\r\n", errorType, message)
+}

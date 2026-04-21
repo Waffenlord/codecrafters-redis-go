@@ -44,7 +44,7 @@ func (p *Parser) ParseProgram() (Node, error) {
 	case lexer.DOLLAR:
 		return p.parseBulkString()
 	}
-	return nil, nil
+	return nil, errors.New("invalid token type")
 }
 
 func (p *Parser) parseArray() (Node, error) {

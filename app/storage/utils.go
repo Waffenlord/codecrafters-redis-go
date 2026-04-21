@@ -42,8 +42,21 @@ func isStreamEntryIdValid(id string, lastSavedId string) (string, error) {
 		return "", errors.New("The ID specified in XADD is equal or smaller than the target stream top item")
 	}
 
-	if newIdMil == lastSavedMil && lastSavedSeq >= newIdSeq {
-		return "", errors.New("The ID specified in XADD is equal or smaller than the target stream top item")
+	if newIdSeq == "*" {
+		intLastSavedSeq, err := strconv.Atoi(lastSavedSeq)
+		if err != nil {
+			return "", fmt.Errorf("error converting right part of last saved id. id seq: %s", lastSavedSeq)
+		}
+		if lastSavedMil == newIdMil {
+			id = fmt.Sprintf("%s-%d", lastSavedMil, intLastSavedSeq+1)
+		} else {
+			id = fmt.Sprintf("%s-%s", newIdMil, "0")
+		}
+
+	} else {
+		if newIdMil == lastSavedMil && lastSavedSeq >= newIdSeq {
+			return "", errors.New("The ID specified in XADD is equal or smaller than the target stream top item")
+		}
 	}
 
 	return id, nil

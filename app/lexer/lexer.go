@@ -89,10 +89,10 @@ func (l *Lexer) readNumber() (string, bool) {
 	startP := l.position
 	isStreamId := false
 	for {
-		if !l.isDigit(l.Ch) && l.Ch != '.' && l.Ch != '-' {
+		if !l.isDigit(l.Ch) && l.Ch != '.' && l.Ch != '-' && l.Ch != '*' {
 			break
 		}
-		if l.Ch == '-' {
+		if l.Ch == '-' && startP < l.position {
 			isStreamId = true
 		}
 		l.readChar()

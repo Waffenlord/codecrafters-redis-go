@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func lcp(first string, second string) int {
@@ -22,6 +23,12 @@ func isStreamEntryIdValid(id string, lastSavedId string) (string, error) {
 	}
 	lastSavedMil := lastSavedParts[0]
 	lastSavedSeq := lastSavedParts[1]
+
+	if id == "*" {
+		currentMil := time.Now().UnixMilli()
+		newId := fmt.Sprintf("%d-0", currentMil)
+		return newId, nil
+	}
 
 	newIdParts := strings.Split(id, "-")
 	if len(newIdParts) != 2 {

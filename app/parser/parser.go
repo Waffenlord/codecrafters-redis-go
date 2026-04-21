@@ -28,6 +28,7 @@ func New(lx *lexer.Lexer) *Parser {
 			lexer.STRING:    {},
 			lexer.INT:       {},
 			lexer.STREAM_ID: {},
+			lexer.ASTERISK: {},
 		},
 	}
 

@@ -3,6 +3,7 @@ package storage
 import (
 	"errors"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"time"
@@ -67,4 +68,43 @@ func isStreamEntryIdValid(id string, lastSavedId string) (string, error) {
 	}
 
 	return id, nil
+}
+
+func validateXRangeIds(startId string, endId string) (string, string) {
+	if !strings.Contains(startId, "-") {
+		startId = fmt.Sprintf("%s-0", startId)
+	}
+	if !strings.Contains(endId, "-") {
+		endId = fmt.Sprintf("%s-%d", endId, math.MaxInt32)
+	}
+	return startId, endId
+}
+
+type comparisonMode string
+
+const (
+	lowerEqual   comparisonMode = "lower"
+	greaterEqual comparisonMode = "greater"
+)
+
+func compareStreamIds(currentId string, limitId string, mode comparisonMode) bool {
+	currentIdParts := strings.Split(currentId, "-")
+	currentIdMil, _ := strconv.Atoi(currentIdParts[0])
+	currentIdSeq, _ := strconv.Atoi(currentIdParts[1])
+
+	limitIdParts := strings.Split(limitId, "-")
+	limitIdMil, _ := strconv.Atoi(limitIdParts[0])
+	limitIdSeq, _ := strconv.Atoi(limitIdParts[1])
+
+	if mode == lowerEqual {
+		if currentIdMil == limitIdMil {
+			return currentIdSeq <= limitIdSeq
+		}
+		return currentIdMil <= limitIdMil
+	}
+
+	if currentIdMil == limitIdMil {
+		return currentIdSeq >= limitIdSeq
+	}
+	return currentIdMil >= limitIdMil
 }

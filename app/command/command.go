@@ -423,6 +423,33 @@ func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	}
 }
 
+func xrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 3 {
+		return errors.New("invalid number of arguments for xrange command")
+	}
+
+	key := args[0]
+	startId := args[1]
+	endId := args[2]
+
+	v, found := s.Get(key)
+	if !found {
+		return errors.New("stream with the especified key not found")
+	}
+
+	switch data := v.(type) {
+	case *storage.StreamType:
+		results, err := data.XRange(startId, endId)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(out, FormatStreamEntries(results))
+		return nil
+	default:
+		return errors.New("value stored should be a stream")
+	}
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":   echo,
 	"ping":   ping,
@@ -436,4 +463,5 @@ var CommandMenu = map[string]Builtin{
 	"blpop":  blpop,
 	"type":   typeCmd,
 	"xadd":   xadd,
+	"xrange": xrange,
 }

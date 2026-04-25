@@ -3,6 +3,8 @@ package command
 import (
 	"fmt"
 	"strings"
+
+	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
 func FormatSimpleString(i string) string {
@@ -46,4 +48,15 @@ const (
 
 func FormatSimpleError(errorType ErrorType, message string) string {
 	return fmt.Sprintf("-%s %s\r\n", errorType, message)
+}
+
+func FormatStreamEntries(entries []storage.NodeResult) string {
+	var result strings.Builder
+	fmt.Fprintf(&result, "*%d\r\n", len(entries))
+	for i := range entries {
+		fmt.Fprint(&result, "*2\r\n")
+		fmt.Fprint(&result, FormatBulkString(entries[i].Id))
+		fmt.Fprint(&result, FormatArray(entries[i].Values))
+	}
+	return result.String()
 }

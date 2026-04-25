@@ -1,6 +1,8 @@
 package storage
 
 import (
+	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -175,7 +177,7 @@ func (st *StreamType) addEdge(e Edge, rn *RadixNode) {
 	rn.Edges[idx] = e
 }
 
-func (st *StreamType) Insert(n *RadixNode, key string, value []string) {
+func (st *StreamType) insert(n *RadixNode, key string, value []string) {
 	for {
 		common := lcp(n.Key, key)
 
@@ -196,16 +198,13 @@ func (st *StreamType) Insert(n *RadixNode, key string, value []string) {
 				label: child.Key[0],
 				child: child,
 			}, n)
-		}
-
-		if common == len(n.Key) {
+		} else if common == len(n.Key) && common == len(key) {
 			n.IsEnd = true
 			n.Value = value
 			return
 		}
 
 		key = key[common:]
-
 		label := key[0]
 		idx, found := st.findEdgePosition(label, n)
 		if !found {
@@ -244,7 +243,43 @@ func (st *StreamType) Add(key string, value []string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	st.Insert(st.Tree, validId, value)
+	st.insert(st.Tree, validId, value)
 	st.LastEntryId = validId
 	return validId, nil
+}
+
+type NodeResult struct {
+	Id     string
+	Values []string
+}
+
+func rangeScan(n *RadixNode, prefix string, start string, end string, result *[]NodeResult) {
+	current := prefix + n.Key
+
+	if n.IsEnd {
+		if compareStreamIds(current, start, greaterEqual) && compareStreamIds(current, end, lowerEqual) {
+			*result = append(*result, NodeResult{Id: current, Values: n.Value})
+		}
+	}
+
+	for _, edge := range n.Edges {
+		rangeScan(edge.child, current, start, end, result)
+	}
+
+}
+
+func (st *StreamType) XRange(startId string, endId string) ([]NodeResult, error) {
+	st.mux.RLock()
+	defer st.mux.RUnlock()
+	validStartId, validEndId := validateXRangeIds(startId, endId)
+
+	var results []NodeResult
+
+	if st.Tree == nil {
+		return results, errors.New("stream has no entries")
+	}
+	fmt.Println("treeRoot", st.Tree)
+	rangeScan(st.Tree, "", validStartId, validEndId, &results)
+
+	return results, nil
 }

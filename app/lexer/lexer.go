@@ -53,9 +53,10 @@ func (l *Lexer) NextToken() Token {
 			}
 			tok.Literal = "-" + num
 		} else {
-			tok.Type = ILLEGAL
-			return tok
+			tok = newToken(MINUS, "-")
 		}
+	case '+':
+		tok = newToken(PLUS, "+")
 	case 0:
 		tok.Type = EOF
 		return tok

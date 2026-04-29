@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -148,8 +147,9 @@ func (st *StreamType) findEdgePosition(label byte, rn *RadixNode) (int, bool) {
 	low := 0
 	high := len(rn.Edges) - 1
 
-	for low < high {
-		mid := low + high/2
+	for low <= high {
+		mid := (low + high) / 2
+
 		if rn.Edges[mid].label < label {
 			low = mid + 1
 		} else {
@@ -179,6 +179,25 @@ func (st *StreamType) addEdge(e Edge, rn *RadixNode) {
 
 func (st *StreamType) insert(n *RadixNode, key string, value []string) {
 	for {
+		if len(n.Key) == 0 && len(n.Edges) > 0 {
+			commonCharNum := 0
+			for _, edge := range n.Edges {
+				childNode := edge.child
+				commonCharNum = lcp(childNode.Key, key)
+				if commonCharNum > 0 {
+					n = childNode
+					break
+				}
+			}
+			if commonCharNum == 0 {
+				newNode := &RadixNode{
+					Key:   key,
+					IsEnd: true,
+					Value: value,
+				}
+				n.Edges = append(n.Edges, Edge{label: key[0], child: newNode})
+			}
+		}
 		common := lcp(n.Key, key)
 
 		if common < len(n.Key) {
@@ -278,7 +297,6 @@ func (st *StreamType) XRange(startId string, endId string) ([]NodeResult, error)
 	if st.Tree == nil {
 		return results, errors.New("stream has no entries")
 	}
-	fmt.Println("treeRoot", st.Tree)
 	rangeScan(st.Tree, "", validStartId, validEndId, &results)
 
 	return results, nil

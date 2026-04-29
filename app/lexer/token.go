@@ -17,6 +17,7 @@ const (
 	PLUS     = "+"
 	RETURN   = "\r"
 	NEWLINE  = "\n"
+	MINUS    = "-"
 
 	// Primitives
 	INT    = "INT"

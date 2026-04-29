@@ -71,6 +71,13 @@ func isStreamEntryIdValid(id string, lastSavedId string) (string, error) {
 }
 
 func validateXRangeIds(startId string, endId string) (string, string) {
+	if startId == "-" || startId == "+" {
+		startId = "0-0"
+	}
+	if endId == "+" || endId == "-" {
+		currentMil := time.Now().UnixMilli()
+		endId = fmt.Sprintf("%d-%d", currentMil, math.MaxInt32)
+	}
 	if !strings.Contains(startId, "-") {
 		startId = fmt.Sprintf("%s-0", startId)
 	}

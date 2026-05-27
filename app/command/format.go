@@ -60,3 +60,14 @@ func FormatStreamEntries(entries []storage.NodeResult) string {
 	}
 	return result.String()
 }
+
+func FormatXReadEntries(entries []storage.XReadResult) string {
+	var result strings.Builder
+	fmt.Fprintf(&result, "*%d\r\n", len(entries))
+	for i := range entries {
+		fmt.Fprint(&result, "*2\r\n")
+		fmt.Fprint(&result, FormatBulkString(entries[i].StreamKey))
+		fmt.Fprint(&result, FormatStreamEntries(entries[i].Results))
+	}
+	return result.String()
+}

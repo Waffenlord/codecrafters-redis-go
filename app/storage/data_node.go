@@ -244,7 +244,7 @@ func (st *StreamType) Add(key string, value []string) (string, error) {
 	st.mux.Lock()
 	defer st.mux.Unlock()
 	if st.Tree == nil {
-		validId, err := isStreamEntryIdValid(key, "0-0")
+		validId, err := isStreamAddEntryIdValid(key, "0-0")
 		if err != nil {
 			return "", err
 		}
@@ -258,7 +258,7 @@ func (st *StreamType) Add(key string, value []string) (string, error) {
 		return validId, nil
 	}
 
-	validId, err := isStreamEntryIdValid(key, st.LastEntryId)
+	validId, err := isStreamAddEntryIdValid(key, st.LastEntryId)
 	if err != nil {
 		return "", err
 	}
@@ -300,4 +300,43 @@ func (st *StreamType) XRange(startId string, endId string) ([]NodeResult, error)
 	rangeScan(st.Tree, "", validStartId, validEndId, &results)
 
 	return results, nil
+}
+
+func readScan(n *RadixNode, prefix string, start string, result *[]NodeResult) {
+	current := prefix + n.Key
+
+	if n.IsEnd {
+		if compareStreamIds(current, start, greater) {
+			*result = append(*result, NodeResult{Id: current, Values: n.Value})
+		}
+	}
+
+	for _, edge := range n.Edges {
+		readScan(edge.child, current, start, result)
+	}
+}
+
+type XReadResult struct {
+	StreamKey string
+	Results   []NodeResult
+}
+
+func (st *StreamType) XRead(startId string, streamKey string) (XReadResult, error) {
+	st.mux.RLock()
+	defer st.mux.RUnlock()
+
+	isValidId := isStreamIdValid(startId)
+	if !isValidId {
+		return XReadResult{}, errors.New("invalid start id for read command")
+	}
+
+	var results []NodeResult
+	readScan(st.Tree, "", startId, &results)
+
+	xReadResult := XReadResult{
+		StreamKey: streamKey,
+		Results:   results,
+	}
+
+	return xReadResult, nil	
 }

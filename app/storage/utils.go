@@ -17,7 +17,26 @@ func lcp(first string, second string) int {
 	return i
 }
 
-func isStreamEntryIdValid(id string, lastSavedId string) (string, error) {
+func isStreamIdValid(id string) bool {
+	parts := strings.Split(id, "-")
+	if len(parts) != 2 {
+		return false
+	}
+	mil, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return false
+	}
+	seq, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return false
+	}
+	if mil < 0 || seq < 0 {
+		return false
+	}
+	return true
+}
+
+func isStreamAddEntryIdValid(id string, lastSavedId string) (string, error) {
 	lastSavedParts := strings.Split(lastSavedId, "-")
 	if len(lastSavedParts) != 2 {
 		return "", fmt.Errorf("invalid id saved as the last entry. lastSavedId: %s", lastSavedId)
@@ -90,8 +109,10 @@ func validateXRangeIds(startId string, endId string) (string, string) {
 type comparisonMode string
 
 const (
-	lowerEqual   comparisonMode = "lower"
-	greaterEqual comparisonMode = "greater"
+	lowerEqual   comparisonMode = "lowerEqual"
+	greaterEqual comparisonMode = "greaterEqual"
+	lower        comparisonMode = "lower"
+	greater      comparisonMode = "greater"
 )
 
 func compareStreamIds(currentId string, limitId string, mode comparisonMode) bool {
@@ -103,15 +124,84 @@ func compareStreamIds(currentId string, limitId string, mode comparisonMode) boo
 	limitIdMil, _ := strconv.Atoi(limitIdParts[0])
 	limitIdSeq, _ := strconv.Atoi(limitIdParts[1])
 
-	if mode == lowerEqual {
+	switch mode {
+	case lowerEqual:
 		if currentIdMil == limitIdMil {
 			return currentIdSeq <= limitIdSeq
 		}
 		return currentIdMil <= limitIdMil
+
+	case greaterEqual:
+		if currentIdMil == limitIdMil {
+			return currentIdSeq >= limitIdSeq
+		}
+		return currentIdMil >= limitIdMil
+	case lower:
+		if currentIdMil == limitIdMil {
+			return currentIdSeq < limitIdSeq
+		}
+		return currentIdMil < limitIdMil
+	case greater:
+		if currentIdMil == limitIdMil {
+			return currentIdSeq > limitIdSeq
+		}
+		return currentIdMil > limitIdMil
+	default:
+		return false
+	}
+}
+
+type XReadArgs struct {
+	StreamKeys []string
+	StreamIds  []string
+	IsBlocked  bool
+	BlockTime  int
+}
+
+func ParseXReadArgs(args []string) (XReadArgs, error) {
+	result := XReadArgs{}
+	isStreamData := false
+	isBlockedData := false
+	for i := range args {
+		currentArg := args[i]
+		if currentArg == "streams" {
+			isStreamData = true
+			isBlockedData = false
+			continue
+		}
+
+		if currentArg == "block" {
+			isBlockedData = true
+			isStreamData = false
+			continue
+		}
+
+		if isBlockedData {
+			timeout, err := strconv.Atoi(currentArg)
+			if err != nil {
+				return XReadArgs{}, err
+			}
+			result.IsBlocked = true
+			result.BlockTime = timeout
+			continue
+		}
+
+		if isStreamData {
+			if strings.Contains(currentArg, "-") {
+				parts := strings.Split(currentArg, "-")
+				if len(parts) != 2 {
+					result.StreamKeys = append(result.StreamKeys, currentArg)
+					continue
+				}
+				result.StreamIds = append(result.StreamIds, currentArg)
+			} else {
+				result.StreamKeys = append(result.StreamKeys, currentArg)
+			}
+		}
+	}
+	if len(result.StreamKeys) != len(result.StreamIds) {
+		return XReadArgs{}, errors.New("args should contain key-value pairs")
 	}
 
-	if currentIdMil == limitIdMil {
-		return currentIdSeq >= limitIdSeq
-	}
-	return currentIdMil >= limitIdMil
+	return result, nil
 }

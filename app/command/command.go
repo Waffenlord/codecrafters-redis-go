@@ -450,6 +450,37 @@ func xrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error
 	}
 }
 
+func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) < 3 {
+		return errors.New("invalid number of arguments for xread command")
+	}
+
+	parsedArgs, err := storage.ParseXReadArgs(args)
+	if err != nil {
+		return err
+	}
+	var results []storage.XReadResult
+	for i, key := range parsedArgs.StreamKeys {
+		currentId := parsedArgs.StreamIds[i]
+		v, found := s.Get(key)
+		if !found {
+			return errors.New("stream with the especified key not found")
+		}
+		switch data := v.(type) {
+		case *storage.StreamType:
+			result, err := data.XRead(currentId, key)
+			if err != nil {
+				return err
+			}
+			results = append(results, result)
+		default:
+			return errors.New("value stored should be a stream")
+		}
+	}
+	fmt.Fprint(out, FormatXReadEntries(results))
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":   echo,
 	"ping":   ping,
@@ -464,4 +495,5 @@ var CommandMenu = map[string]Builtin{
 	"type":   typeCmd,
 	"xadd":   xadd,
 	"xrange": xrange,
+	"xread":  xread,
 }

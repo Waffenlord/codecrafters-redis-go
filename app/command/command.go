@@ -416,6 +416,7 @@ func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 			fmt.Fprint(out, FormatSimpleError(genericError, err.Error()))
 			return nil
 		}
+		s.Blocker.NotifyClient(key, "OK")
 		fmt.Fprint(out, FormatBulkString(id))
 		return nil
 	default:
@@ -461,18 +462,61 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	}
 	var results []storage.XReadResult
 	for i, key := range parsedArgs.StreamKeys {
+		var ch chan string
 		currentId := parsedArgs.StreamIds[i]
 		v, found := s.Get(key)
 		if !found {
-			return errors.New("stream with the especified key not found")
+			if parsedArgs.IsBlocked {
+				ch = s.Blocker.BlockedByKey(key)
+				if parsedArgs.BlockTime == 0 {
+					<- ch 
+				} else {
+					select {
+					case <-ch:
+					case <-time.After(time.Duration(parsedArgs.BlockTime) * time.Millisecond):
+						fmt.Fprint(out, FormatNullArray())
+						return nil
+					}
+				}
+			} else {
+				return errors.New("stream with the especified key not found")
+			}	
 		}
 		switch data := v.(type) {
 		case *storage.StreamType:
+		    var finalResult storage.XReadResult
 			result, err := data.XRead(currentId, key)
 			if err != nil {
 				return err
 			}
-			results = append(results, result)
+			if len(result.Results) == 0 && parsedArgs.IsBlocked {
+				ch = s.Blocker.BlockedByKey(key)
+				var currentResult storage.XReadResult
+				var err error
+				if parsedArgs.BlockTime == 0 {
+					<-ch
+					currentResult, err = data.XRead(currentId, key)
+					if err != nil {
+						return err
+					}
+				} else {
+					select {
+					case <-ch:
+					currentResult, err = data.XRead(currentId, key)
+					if err != nil {
+						return err
+					}
+					case <-time.After(time.Duration(parsedArgs.BlockTime) * time.Millisecond):
+						fmt.Fprint(out, FormatNullArray())
+						return nil
+					}
+				}
+				finalResult = currentResult
+			} else {
+				finalResult = result
+			}
+			
+			results = append(results, finalResult)
 		default:
 			return errors.New("value stored should be a stream")
 		}

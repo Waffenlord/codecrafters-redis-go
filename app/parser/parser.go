@@ -31,6 +31,7 @@ func New(lx *lexer.Lexer) *Parser {
 			lexer.ASTERISK:  {},
 			lexer.MINUS:     {},
 			lexer.PLUS:      {},
+			lexer.DOLLAR:    {},
 		},
 	}
 

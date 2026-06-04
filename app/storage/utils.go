@@ -195,6 +195,10 @@ func ParseXReadArgs(args []string) (XReadArgs, error) {
 				}
 				result.StreamIds = append(result.StreamIds, currentArg)
 			} else {
+				if currentArg == "$" {
+					result.StreamIds = append(result.StreamIds, currentArg)
+					continue
+				}
 				result.StreamKeys = append(result.StreamKeys, currentArg)
 			}
 		}

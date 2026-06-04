@@ -478,6 +478,10 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 						return nil
 					}
 				}
+				v, found = s.Get(key)
+				if !found {
+					return errors.New("stream with the especified key not found")
+				}
 			} else {
 				return errors.New("stream with the especified key not found")
 			}	
@@ -485,11 +489,10 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 		switch data := v.(type) {
 		case *storage.StreamType:
 		    var finalResult storage.XReadResult
-			result, err := data.XRead(currentId, key)
-			if err != nil {
-				return err
+			if currentId == "$" {
+				currentId = data.LastEntryId
 			}
-			if len(result.Results) == 0 && parsedArgs.IsBlocked {
+			if parsedArgs.IsBlocked {
 				ch = s.Blocker.BlockedByKey(key)
 				var currentResult storage.XReadResult
 				var err error
@@ -513,6 +516,10 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 				}
 				finalResult = currentResult
 			} else {
+				result, err := data.XRead(currentId, key)
+				if err != nil {
+					return err
+				}
 				finalResult = result
 			}
 			

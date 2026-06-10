@@ -469,7 +469,7 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 			if parsedArgs.IsBlocked {
 				ch = s.Blocker.BlockedByKey(key)
 				if parsedArgs.BlockTime == 0 {
-					<- ch 
+					<-ch
 				} else {
 					select {
 					case <-ch:
@@ -484,11 +484,11 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 				}
 			} else {
 				return errors.New("stream with the especified key not found")
-			}	
+			}
 		}
 		switch data := v.(type) {
 		case *storage.StreamType:
-		    var finalResult storage.XReadResult
+			var finalResult storage.XReadResult
 			if currentId == "$" {
 				currentId = data.LastEntryId
 			}
@@ -505,10 +505,10 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 				} else {
 					select {
 					case <-ch:
-					currentResult, err = data.XRead(currentId, key)
-					if err != nil {
-						return err
-					}
+						currentResult, err = data.XRead(currentId, key)
+						if err != nil {
+							return err
+						}
 					case <-time.After(time.Duration(parsedArgs.BlockTime) * time.Millisecond):
 						fmt.Fprint(out, FormatNullArray())
 						return nil
@@ -522,7 +522,7 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 				}
 				finalResult = result
 			}
-			
+
 			results = append(results, finalResult)
 		default:
 			return errors.New("value stored should be a stream")
@@ -530,6 +530,39 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	}
 	fmt.Fprint(out, FormatXReadEntries(results))
 	return nil
+}
+
+func incr(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+	if len(args) != 1 {
+		return errors.New("invalid number of arguments for incr command")
+	}
+
+	key := args[0]
+	v, found := s.Get(key)
+	if !found {
+		data := storage.StringType{
+			Value:     "1",
+			CreatedAt: time.Now(),
+		}
+		s.Set(key, &data)
+		fmt.Fprint(out, FormatInteger(1))
+		return nil
+	}
+
+	switch data := v.(type) {
+	case *storage.StringType:
+		parsed, err := strconv.Atoi(data.Value)
+		if err != nil {
+			fmt.Fprint(out, FormatSimpleError(genericError, "value is not an integer or out of range"))
+			return nil
+		}
+		parsed++
+		data.Value = strconv.Itoa(parsed)
+		fmt.Fprint(out, FormatInteger(parsed))
+		return nil
+	default:
+		return errors.New("value stored should be a string type")
+	}
 }
 
 var CommandMenu = map[string]Builtin{
@@ -547,4 +580,5 @@ var CommandMenu = map[string]Builtin{
 	"xadd":   xadd,
 	"xrange": xrange,
 	"xread":  xread,
+	"incr":   incr,
 }

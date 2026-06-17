@@ -12,6 +12,7 @@ import (
 )
 
 type CmdToExecute struct {
+	Name string
 	Cmd  Builtin
 	Args []string
 }
@@ -21,16 +22,23 @@ type RedisClient struct {
 	TxQueue       []*CmdToExecute
 }
 
-type Builtin func(in io.Reader, out io.Writer, args []string, s *storage.Storage, c *RedisClient) error
+type CommandContext struct {
+	In   io.Reader
+	Out  io.Writer
+	Args []string
+	C    *RedisClient
+}
 
-func ping(_ io.Reader, out io.Writer, _ []string, _ *storage.Storage, _ *RedisClient) error {
-	fmt.Fprint(out, FormatSimpleString("PONG"))
+type Builtin func(ctx *CommandContext, s *storage.Storage) error
+
+func ping(ctx *CommandContext, s *storage.Storage) error {
+	fmt.Fprint(ctx.Out, FormatSimpleString("PONG"))
 	return nil
 }
 
-func echo(_ io.Reader, out io.Writer, args []string, _ *storage.Storage, _ *RedisClient) error {
-	result := strings.Join(args, "")
-	fmt.Fprint(out, FormatBulkString(result))
+func echo(ctx *CommandContext, s *storage.Storage) error {
+	result := strings.Join(ctx.Args, "")
+	fmt.Fprint(ctx.Out, FormatBulkString(result))
 	return nil
 }
 
@@ -64,31 +72,31 @@ var setOptionalArguments = map[string]setOptionalArgument{
 	},
 }
 
-func set(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 2 {
+func set(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 2 {
 		return errors.New("invalid number of arguments for set command")
 	}
-	key := args[0]
-	value := args[1]
+	key := ctx.Args[0]
+	value := ctx.Args[1]
 	data := storage.StringType{
 		Value:     value,
 		CreatedAt: time.Now(),
 	}
 
-	if len(args) > 2 {
+	if len(ctx.Args) > 2 {
 		currentIdx := 2
-		for currentIdx < len(args) {
-			cmdArg := args[currentIdx]
+		for currentIdx < len(ctx.Args) {
+			cmdArg := ctx.Args[currentIdx]
 			cmd, ok := setOptionalArguments[strings.ToLower(cmdArg)]
 			if !ok {
 				return errors.New("invalid set optional argument")
 			}
 			if cmd.acceptsValue {
 				currentIdx++
-				if currentIdx >= len(args) {
+				if currentIdx >= len(ctx.Args) {
 					return errors.New("missing value for set optional argument")
 				}
-				arg := args[currentIdx]
+				arg := ctx.Args[currentIdx]
 				value, err := strconv.Atoi(arg)
 				if err != nil {
 					return fmt.Errorf("error converting arg value: %s", err)
@@ -100,19 +108,19 @@ func set(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Redis
 	}
 
 	s.Set(key, &data)
-	fmt.Fprint(out, FormatSimpleString("OK"))
+	fmt.Fprint(ctx.Out, FormatSimpleString("OK"))
 	return nil
 }
 
-func get(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 1 {
+func get(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 1 {
 		return errors.New("key must be provided")
 	}
-	key := args[0]
+	key := ctx.Args[0]
 
 	v, found := s.Get(key)
 	if !found {
-		fmt.Fprint(out, FormatNullBulkString())
+		fmt.Fprint(ctx.Out, FormatNullBulkString())
 		return nil
 	}
 
@@ -122,23 +130,23 @@ func get(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Redis
 			diff := time.Since(data.CreatedAt)
 			if diff.Milliseconds() >= data.ExpMil {
 				s.Delete(key)
-				fmt.Fprint(out, FormatNullBulkString())
+				fmt.Fprint(ctx.Out, FormatNullBulkString())
 				return nil
 			}
 		}
-		fmt.Fprint(out, FormatBulkString(data.Value))
+		fmt.Fprint(ctx.Out, FormatBulkString(data.Value))
 		return nil
 	}
 	return nil
 }
 
-func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 2 {
+func rpush(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 2 {
 		return errors.New("invalid number of arguments for rpush command")
 	}
 
-	key := args[0]
-	values := args[1:]
+	key := ctx.Args[0]
+	values := ctx.Args[1:]
 
 	v, found := s.Get(key)
 	if !found {
@@ -152,7 +160,7 @@ func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 			listLength = newList.AppendR(values[i])
 		}
 		s.Set(key, newList)
-		fmt.Fprint(out, FormatInteger(listLength))
+		fmt.Fprint(ctx.Out, FormatInteger(listLength))
 		return nil
 	}
 	switch data := v.(type) {
@@ -165,7 +173,7 @@ func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 			}
 			newLength = data.AppendR(values[i])
 		}
-		fmt.Fprint(out, FormatInteger(newLength))
+		fmt.Fprint(ctx.Out, FormatInteger(newLength))
 		return nil
 	default:
 		return errors.New("value stored should be a list")
@@ -192,14 +200,14 @@ func isRangeValid(length int, startIdx int, endIdx int) (int, int, bool) {
 	return startIdx, endIdx, true
 }
 
-func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 3 {
+func lrange(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 3 {
 		return errors.New("invalid number of arguments for lrange command")
 	}
 
-	key := args[0]
-	startIdx := args[1]
-	endIdx := args[2]
+	key := ctx.Args[0]
+	startIdx := ctx.Args[1]
+	endIdx := ctx.Args[2]
 
 	startIdxInt, err := strconv.Atoi(startIdx)
 	if err != nil {
@@ -212,31 +220,31 @@ func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Re
 
 	v, found := s.Get(key)
 	if !found {
-		fmt.Fprint(out, FormatArray(make([]string, 0)))
+		fmt.Fprint(ctx.Out, FormatArray(make([]string, 0)))
 		return nil
 	}
 	switch data := v.(type) {
 	case *storage.ListType:
 		cleanedStartIdx, cleanedEndIdx, isValid := isRangeValid(data.Len, startIdxInt, endIdxInt)
 		if !isValid {
-			fmt.Fprint(out, FormatArray(make([]string, 0)))
+			fmt.Fprint(ctx.Out, FormatArray(make([]string, 0)))
 			return nil
 		}
 		result := data.LRange(cleanedStartIdx, cleanedEndIdx)
-		fmt.Fprint(out, FormatArray(result))
+		fmt.Fprint(ctx.Out, FormatArray(result))
 		return nil
 	default:
 		return errors.New("value stored should be a list")
 	}
 }
 
-func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 2 {
+func lpush(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 2 {
 		return errors.New("invalid number of arguments for lpush command")
 	}
 
-	key := args[0]
-	values := args[1:]
+	key := ctx.Args[0]
+	values := ctx.Args[1:]
 
 	v, found := s.Get(key)
 	if !found {
@@ -250,7 +258,7 @@ func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 			listLength = newList.AppendL(values[i])
 		}
 		s.Set(key, newList)
-		fmt.Fprint(out, FormatInteger(listLength))
+		fmt.Fprint(ctx.Out, FormatInteger(listLength))
 		return nil
 	}
 	switch data := v.(type) {
@@ -263,23 +271,23 @@ func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 			}
 			newLength = data.AppendL(values[i])
 		}
-		fmt.Fprint(out, FormatInteger(newLength))
+		fmt.Fprint(ctx.Out, FormatInteger(newLength))
 		return nil
 	default:
 		return errors.New("value stored should be a list")
 	}
 }
 
-func llen(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 1 {
+func llen(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 1 {
 		return errors.New("invalid number of arguments for llen command")
 	}
 
-	key := args[0]
+	key := ctx.Args[0]
 
 	v, found := s.Get(key)
 	if !found {
-		fmt.Fprint(out, FormatInteger(0))
+		fmt.Fprint(ctx.Out, FormatInteger(0))
 		return nil
 	}
 
@@ -287,44 +295,44 @@ func llen(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Redi
 	case *storage.ListType:
 		data.Mux.RLock()
 		defer data.Mux.RUnlock()
-		fmt.Fprint(out, FormatInteger(data.Len))
+		fmt.Fprint(ctx.Out, FormatInteger(data.Len))
 		return nil
 	default:
 		return errors.New("value stored should be a list")
 	}
 }
 
-func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 1 {
+func lpop(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 1 {
 		return errors.New("invalid number of arguments for lpop command")
 	}
 
-	key := args[0]
+	key := ctx.Args[0]
 
 	v, found := s.Get(key)
 	if !found {
-		fmt.Fprint(out, FormatNullBulkString())
+		fmt.Fprint(ctx.Out, FormatNullBulkString())
 		return nil
 	}
 	switch data := v.(type) {
 	case *storage.ListType:
 		if data.Len == 0 {
-			fmt.Fprint(out, FormatNullBulkString())
+			fmt.Fprint(ctx.Out, FormatNullBulkString())
 			return nil
 		}
 		n := 1
 		var err error
-		if len(args) > 1 {
-			n, err = strconv.Atoi(args[1])
+		if len(ctx.Args) > 1 {
+			n, err = strconv.Atoi(ctx.Args[1])
 			if err != nil {
 				return fmt.Errorf("invalid value for number of items to extract: %s", err)
 			}
 		}
 		result := data.Lpop(n)
 		if len(result) > 1 {
-			fmt.Fprint(out, FormatArray(result))
+			fmt.Fprint(ctx.Out, FormatArray(result))
 		} else {
-			fmt.Fprint(out, FormatBulkString(result[0]))
+			fmt.Fprint(ctx.Out, FormatBulkString(result[0]))
 		}
 		return nil
 	default:
@@ -332,12 +340,12 @@ func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Redi
 	}
 }
 
-func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 2 {
+func blpop(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 2 {
 		return errors.New("invalid number of arguments for blpop command")
 	}
-	key := args[0]
-	timeout := args[1]
+	key := ctx.Args[0]
+	timeout := ctx.Args[1]
 
 	timeoutFloat, err := strconv.ParseFloat(timeout, 32)
 	if err != nil {
@@ -349,7 +357,7 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 		if list, ok := data.(*storage.ListType); ok && list.Len > 0 {
 			values := list.Lpop(1)
 			if len(values) > 0 {
-				fmt.Fprint(out, FormatArray([]string{key, values[0]}))
+				fmt.Fprint(ctx.Out, FormatArray([]string{key, values[0]}))
 				return nil
 			}
 
@@ -360,53 +368,53 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 
 	if timeout == "0" {
 		v := <-ch
-		fmt.Fprint(out, FormatArray([]string{key, v}))
+		fmt.Fprint(ctx.Out, FormatArray([]string{key, v}))
 		return nil
 	} else {
 		select {
 		case v := <-ch:
-			fmt.Fprint(out, FormatArray([]string{key, v}))
+			fmt.Fprint(ctx.Out, FormatArray([]string{key, v}))
 			return nil
 		case <-time.After(time.Duration(timeoutFloat * float64(time.Second))):
-			fmt.Fprint(out, FormatNullArray())
+			fmt.Fprint(ctx.Out, FormatNullArray())
 			return nil
 		}
 	}
 }
 
-func typeCmd(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 1 {
+func typeCmd(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 1 {
 		return errors.New("invalid number of arguments for type command")
 	}
 
-	key := args[0]
+	key := ctx.Args[0]
 	v, found := s.Get(key)
 	if !found {
-		fmt.Fprint(out, FormatSimpleString("none"))
+		fmt.Fprint(ctx.Out, FormatSimpleString("none"))
 		return nil
 	}
 
 	switch v.(type) {
 	case *storage.StringType:
-		fmt.Fprint(out, FormatSimpleString("string"))
+		fmt.Fprint(ctx.Out, FormatSimpleString("string"))
 	case *storage.ListType:
-		fmt.Fprint(out, FormatSimpleString("list"))
+		fmt.Fprint(ctx.Out, FormatSimpleString("list"))
 	case *storage.StreamType:
-		fmt.Fprint(out, FormatSimpleString("stream"))
+		fmt.Fprint(ctx.Out, FormatSimpleString("stream"))
 	default:
-		fmt.Fprint(out, FormatSimpleString("none"))
+		fmt.Fprint(ctx.Out, FormatSimpleString("none"))
 	}
 	return nil
 }
 
-func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 4 {
+func xadd(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 4 {
 		return errors.New("invalid number of arguments for xadd command")
 	}
 
-	key := args[0]
-	id := args[1]
-	values := args[2:]
+	key := ctx.Args[0]
+	id := ctx.Args[1]
+	values := ctx.Args[2:]
 
 	if len(values)%2 != 0 {
 		return errors.New("values need to be key value pairs")
@@ -423,25 +431,25 @@ func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Redi
 	case *storage.StreamType:
 		id, err := data.Add(id, values)
 		if err != nil {
-			fmt.Fprint(out, FormatSimpleError(genericError, err.Error()))
+			fmt.Fprint(ctx.Out, FormatSimpleError(genericError, err.Error()))
 			return nil
 		}
 		s.Blocker.NotifyClient(key, "OK")
-		fmt.Fprint(out, FormatBulkString(id))
+		fmt.Fprint(ctx.Out, FormatBulkString(id))
 		return nil
 	default:
 		return errors.New("value stored should be a stream")
 	}
 }
 
-func xrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 3 {
+func xrange(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 3 {
 		return errors.New("invalid number of arguments for xrange command")
 	}
 
-	key := args[0]
-	startId := args[1]
-	endId := args[2]
+	key := ctx.Args[0]
+	startId := ctx.Args[1]
+	endId := ctx.Args[2]
 
 	v, found := s.Get(key)
 	if !found {
@@ -454,19 +462,19 @@ func xrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Re
 		if err != nil {
 			return err
 		}
-		fmt.Fprint(out, FormatStreamEntries(results))
+		fmt.Fprint(ctx.Out, FormatStreamEntries(results))
 		return nil
 	default:
 		return errors.New("value stored should be a stream")
 	}
 }
 
-func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) < 3 {
+func xread(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 3 {
 		return errors.New("invalid number of arguments for xread command")
 	}
 
-	parsedArgs, err := storage.ParseXReadArgs(args)
+	parsedArgs, err := storage.ParseXReadArgs(ctx.Args)
 	if err != nil {
 		return err
 	}
@@ -484,7 +492,7 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 					select {
 					case <-ch:
 					case <-time.After(time.Duration(parsedArgs.BlockTime) * time.Millisecond):
-						fmt.Fprint(out, FormatNullArray())
+						fmt.Fprint(ctx.Out, FormatNullArray())
 						return nil
 					}
 				}
@@ -520,7 +528,7 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 							return err
 						}
 					case <-time.After(time.Duration(parsedArgs.BlockTime) * time.Millisecond):
-						fmt.Fprint(out, FormatNullArray())
+						fmt.Fprint(ctx.Out, FormatNullArray())
 						return nil
 					}
 				}
@@ -538,16 +546,16 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Red
 			return errors.New("value stored should be a stream")
 		}
 	}
-	fmt.Fprint(out, FormatXReadEntries(results))
+	fmt.Fprint(ctx.Out, FormatXReadEntries(results))
 	return nil
 }
 
-func incr(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
-	if len(args) != 1 {
+func incr(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) != 1 {
 		return errors.New("invalid number of arguments for incr command")
 	}
 
-	key := args[0]
+	key := ctx.Args[0]
 	v, found := s.Get(key)
 	if !found {
 		data := storage.StringType{
@@ -555,7 +563,7 @@ func incr(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Redi
 			CreatedAt: time.Now(),
 		}
 		s.Set(key, &data)
-		fmt.Fprint(out, FormatInteger(1))
+		fmt.Fprint(ctx.Out, FormatInteger(1))
 		return nil
 	}
 
@@ -563,28 +571,36 @@ func incr(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *Redi
 	case *storage.StringType:
 		parsed, err := strconv.Atoi(data.Value)
 		if err != nil {
-			fmt.Fprint(out, FormatSimpleError(genericError, "value is not an integer or out of range"))
+			fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "value is not an integer or out of range"))
 			return nil
 		}
 		parsed++
 		data.Value = strconv.Itoa(parsed)
-		fmt.Fprint(out, FormatInteger(parsed))
+		fmt.Fprint(ctx.Out, FormatInteger(parsed))
 		return nil
 	default:
 		return errors.New("value stored should be a string type")
 	}
 }
 
-func multi(_ io.Reader, out io.Writer, args []string, s *storage.Storage, c *RedisClient) error {
-	if len(args) != 0 {
+func multi(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) != 0 {
 		return errors.New("multi command should not have any arguments")
 	}
-	if c.InTransaction {
-		fmt.Fprint(out, FormatSimpleError(genericError, "multi command already called"))
+	if ctx.C.InTransaction {
+		fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "multi command already called"))
 		return nil
 	}
-	c.InTransaction = true
-	fmt.Fprint(out, FormatSimpleString("OK"))
+	ctx.C.InTransaction = true
+	fmt.Fprint(ctx.Out, FormatSimpleString("OK"))
+	return nil
+}
+
+func exec(ctx *CommandContext, _ *storage.Storage) error {
+	if !ctx.C.InTransaction {
+		fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "EXEC without MULTI"))
+		return nil
+	}
 	return nil
 }
 
@@ -605,4 +621,5 @@ var CommandMenu = map[string]Builtin{
 	"xread":  xread,
 	"incr":   incr,
 	"multi":  multi,
+	"exec":   exec,
 }

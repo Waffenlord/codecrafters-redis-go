@@ -18,9 +18,11 @@ func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient) (str
 			currentTok := v.Elements[i]
 			switch t := currentTok.(type) {
 			case (parser.BulkString):
-				cmd, isCmd := command.CommandMenu[strings.ToLower(t.Literal)]
+				key := strings.ToLower(t.Literal)
+				cmd, isCmd := command.CommandMenu[key]
 				if isCmd {
 					cmdToAdd := &command.CmdToExecute{
+						Name: key,
 						Cmd:  cmd,
 						Args: []string{},
 					}
@@ -34,11 +36,11 @@ func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient) (str
 
 		if len(cmdList) == 1 {
 			currentCmd := cmdList[0]
-			if c.InTransaction {
+			if c.InTransaction && currentCmd.Name != "exec" {
 				c.TxQueue = append(c.TxQueue, currentCmd)
 				return command.FormatSimpleString("QUEUED"), nil
 			}
-			err := currentCmd.Cmd(nil, &buf, currentCmd.Args, s, c)
+			err := currentCmd.Cmd(&command.CommandContext{Out: &buf, Args: currentCmd.Args, C: c}, s)
 			if err != nil {
 				return "", err
 			}

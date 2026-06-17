@@ -11,14 +11,24 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
-type Builtin func(in io.Reader, out io.Writer, args []string, s *storage.Storage) error
+type CmdToExecute struct {
+	Cmd  Builtin
+	Args []string
+}
 
-func ping(_ io.Reader, out io.Writer, _ []string, _ *storage.Storage) error {
+type RedisClient struct {
+	InTransaction bool
+	TxQueue       []*CmdToExecute
+}
+
+type Builtin func(in io.Reader, out io.Writer, args []string, s *storage.Storage, c *RedisClient) error
+
+func ping(_ io.Reader, out io.Writer, _ []string, _ *storage.Storage, _ *RedisClient) error {
 	fmt.Fprint(out, FormatSimpleString("PONG"))
 	return nil
 }
 
-func echo(_ io.Reader, out io.Writer, args []string, _ *storage.Storage) error {
+func echo(_ io.Reader, out io.Writer, args []string, _ *storage.Storage, _ *RedisClient) error {
 	result := strings.Join(args, "")
 	fmt.Fprint(out, FormatBulkString(result))
 	return nil
@@ -54,7 +64,7 @@ var setOptionalArguments = map[string]setOptionalArgument{
 	},
 }
 
-func set(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func set(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 2 {
 		return errors.New("invalid number of arguments for set command")
 	}
@@ -94,7 +104,7 @@ func set(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	return nil
 }
 
-func get(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func get(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 1 {
 		return errors.New("key must be provided")
 	}
@@ -122,7 +132,7 @@ func get(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	return nil
 }
 
-func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func rpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 2 {
 		return errors.New("invalid number of arguments for rpush command")
 	}
@@ -182,7 +192,7 @@ func isRangeValid(length int, startIdx int, endIdx int) (int, int, bool) {
 	return startIdx, endIdx, true
 }
 
-func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 3 {
 		return errors.New("invalid number of arguments for lrange command")
 	}
@@ -220,7 +230,7 @@ func lrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error
 	}
 }
 
-func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 2 {
 		return errors.New("invalid number of arguments for lpush command")
 	}
@@ -260,7 +270,7 @@ func lpush(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	}
 }
 
-func llen(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func llen(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 1 {
 		return errors.New("invalid number of arguments for llen command")
 	}
@@ -284,7 +294,7 @@ func llen(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	}
 }
 
-func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 1 {
 		return errors.New("invalid number of arguments for lpop command")
 	}
@@ -322,7 +332,7 @@ func lpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	}
 }
 
-func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 2 {
 		return errors.New("invalid number of arguments for blpop command")
 	}
@@ -364,7 +374,7 @@ func blpop(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	}
 }
 
-func typeCmd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func typeCmd(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 1 {
 		return errors.New("invalid number of arguments for type command")
 	}
@@ -389,7 +399,7 @@ func typeCmd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) erro
 	return nil
 }
 
-func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 4 {
 		return errors.New("invalid number of arguments for xadd command")
 	}
@@ -424,7 +434,7 @@ func xadd(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	}
 }
 
-func xrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func xrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 3 {
 		return errors.New("invalid number of arguments for xrange command")
 	}
@@ -451,7 +461,7 @@ func xrange(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error
 	}
 }
 
-func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) < 3 {
 		return errors.New("invalid number of arguments for xread command")
 	}
@@ -532,7 +542,7 @@ func xread(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error 
 	return nil
 }
 
-func incr(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
+func incr(_ io.Reader, out io.Writer, args []string, s *storage.Storage, _ *RedisClient) error {
 	if len(args) != 1 {
 		return errors.New("invalid number of arguments for incr command")
 	}
@@ -565,6 +575,19 @@ func incr(_ io.Reader, out io.Writer, args []string, s *storage.Storage) error {
 	}
 }
 
+func multi(_ io.Reader, out io.Writer, args []string, s *storage.Storage, c *RedisClient) error {
+	if len(args) != 0 {
+		return errors.New("multi command should not have any arguments")
+	}
+	if c.InTransaction {
+		fmt.Fprint(out, FormatSimpleError(genericError, "multi command already called"))
+		return nil
+	}
+	c.InTransaction = true
+	fmt.Fprint(out, FormatSimpleString("OK"))
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":   echo,
 	"ping":   ping,
@@ -581,4 +604,5 @@ var CommandMenu = map[string]Builtin{
 	"xrange": xrange,
 	"xread":  xread,
 	"incr":   incr,
+	"multi":  multi,
 }

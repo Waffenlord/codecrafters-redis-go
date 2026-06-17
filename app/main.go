@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 
+	"github.com/codecrafters-io/redis-starter-go/app/command"
 	"github.com/codecrafters-io/redis-starter-go/app/evaluator"
 	"github.com/codecrafters-io/redis-starter-go/app/lexer"
 	"github.com/codecrafters-io/redis-starter-go/app/parser"
@@ -13,21 +14,6 @@ import (
 
 func main() {
 	storage := storage.NewStorage()
-	/*
-		test := []byte("*5\r\n$3\r\nSET\r\n$5\r\napple\r\n$9\r\npineapple\r\n$2\r\nPX\r\n$3\r\n100\r\n")
-		lex := lexer.NewLexer(test)
-		par := parser.New(lex)
-		result, err := par.ParseProgram()
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(result)
-		encoded, err := evaluator.EvalProgram(result, storage)
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(encoded)
-	*/
 
 	l, err := net.Listen("tcp", "0.0.0.0:6379")
 	if err != nil {
@@ -49,6 +35,10 @@ func main() {
 
 func handleConnection(c net.Conn, s *storage.Storage) {
 	defer c.Close()
+	client := command.RedisClient{
+		InTransaction: false,
+		TxQueue:       nil,
+	}
 	for {
 		buf := make([]byte, 1024)
 		n, err := c.Read(buf)
@@ -64,7 +54,7 @@ func handleConnection(c net.Conn, s *storage.Storage) {
 				fmt.Fprintf(c, "Error ocurred while parsing: %s", err)
 				return
 			}
-			encoded, err := evaluator.EvalProgram(result, s)
+			encoded, err := evaluator.EvalProgram(result, s, &client)
 			if err != nil {
 				fmt.Println(err)
 				fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)

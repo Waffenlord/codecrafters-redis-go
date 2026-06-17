@@ -596,7 +596,7 @@ func multi(ctx *CommandContext, s *storage.Storage) error {
 	return nil
 }
 
-func exec(ctx *CommandContext, _ *storage.Storage) error {
+func exec(ctx *CommandContext, s *storage.Storage) error {
 	if !ctx.C.InTransaction {
 		fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "EXEC without MULTI"))
 		return nil
@@ -606,6 +606,25 @@ func exec(ctx *CommandContext, _ *storage.Storage) error {
 		fmt.Fprint(ctx.Out, FormatArray(nil))
 		return nil
 	}
+	fmt.Println("Executing transaction...")
+	var row strings.Builder
+	var results []string
+	for _, cmd := range ctx.C.TxQueue {
+		currentContext := CommandContext{
+			In:   ctx.In,
+			Out:  &row,
+			Args: cmd.Args,
+			C:    ctx.C,
+		}
+		err := cmd.Cmd(&currentContext, s)
+		if err != nil {
+			fmt.Fprint(currentContext.Out, FormatSimpleError(genericError, err.Error()))
+		}
+		results = append(results, row.String())
+		row.Reset()
+	}
+	ctx.C.InTransaction = false
+	fmt.Fprint(ctx.Out, FormatSimpleStringArray(results))
 	return nil
 }
 

@@ -71,3 +71,12 @@ func FormatXReadEntries(entries []storage.XReadResult) string {
 	}
 	return result.String()
 }
+
+func FormatSimpleStringArray(l []string) string {
+	var result strings.Builder
+	fmt.Fprintf(&result, "*%d\r\n", len(l))
+	for i := range l {
+		fmt.Fprintf(&result, "%s", l[i])
+	}
+	return result.String()
+}

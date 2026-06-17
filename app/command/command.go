@@ -601,6 +601,11 @@ func exec(ctx *CommandContext, _ *storage.Storage) error {
 		fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "EXEC without MULTI"))
 		return nil
 	}
+	if len(ctx.C.TxQueue) == 0 {
+		ctx.C.InTransaction = false
+		fmt.Fprint(ctx.Out, FormatArray(nil))
+		return nil
+	}
 	return nil
 }
 

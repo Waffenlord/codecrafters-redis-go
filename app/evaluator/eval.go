@@ -36,7 +36,7 @@ func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient) (str
 
 		if len(cmdList) == 1 {
 			currentCmd := cmdList[0]
-			if c.InTransaction && currentCmd.Name != "exec" {
+			if c.InTransaction && currentCmd.Name != "exec" && currentCmd.Name != "discard" {
 				c.TxQueue = append(c.TxQueue, currentCmd)
 				return command.FormatSimpleString("QUEUED"), nil
 			}

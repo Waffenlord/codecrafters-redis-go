@@ -628,22 +628,34 @@ func exec(ctx *CommandContext, s *storage.Storage) error {
 	return nil
 }
 
+func discard(ctx *CommandContext, s *storage.Storage) error {
+	if !ctx.C.InTransaction {
+		fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "DISCARD without MULTI"))
+		return nil
+	}
+	ctx.C.InTransaction = false
+	ctx.C.TxQueue = nil
+	fmt.Fprint(ctx.Out, FormatSimpleString("OK"))
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
-	"echo":   echo,
-	"ping":   ping,
-	"set":    set,
-	"get":    get,
-	"rpush":  rpush,
-	"lrange": lrange,
-	"lpush":  lpush,
-	"llen":   llen,
-	"lpop":   lpop,
-	"blpop":  blpop,
-	"type":   typeCmd,
-	"xadd":   xadd,
-	"xrange": xrange,
-	"xread":  xread,
-	"incr":   incr,
-	"multi":  multi,
-	"exec":   exec,
+	"echo":    echo,
+	"ping":    ping,
+	"set":     set,
+	"get":     get,
+	"rpush":   rpush,
+	"lrange":  lrange,
+	"lpush":   lpush,
+	"llen":    llen,
+	"lpop":    lpop,
+	"blpop":   blpop,
+	"type":    typeCmd,
+	"xadd":    xadd,
+	"xrange":  xrange,
+	"xread":   xread,
+	"incr":    incr,
+	"multi":   multi,
+	"exec":    exec,
+	"discard": discard,
 }

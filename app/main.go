@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-
+	"flag"
 	"github.com/codecrafters-io/redis-starter-go/app/command"
 	"github.com/codecrafters-io/redis-starter-go/app/evaluator"
 	"github.com/codecrafters-io/redis-starter-go/app/lexer"
@@ -12,17 +12,20 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
+var port = flag.Int("port", 6379, "port to listen on")
+
 func main() {
 	storage := storage.NewStorage()
+	flag.Parse()
 
-	l, err := net.Listen("tcp", "0.0.0.0:6379")
+	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", *port))
 	if err != nil {
-		fmt.Println("Failed to bind to port 6379")
+		fmt.Println("Failed to bind to port", *port)
 		os.Exit(1)
 	}
 
 	for {
-		fmt.Println("Listening for connections on port 6379")
+		fmt.Println("Listening for connections on port", *port)
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())

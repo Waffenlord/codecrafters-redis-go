@@ -1,42 +1,44 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"net"
 	"os"
-	"flag"
+
 	"github.com/codecrafters-io/redis-starter-go/app/command"
+	"github.com/codecrafters-io/redis-starter-go/app/config"
 	"github.com/codecrafters-io/redis-starter-go/app/evaluator"
 	"github.com/codecrafters-io/redis-starter-go/app/lexer"
 	"github.com/codecrafters-io/redis-starter-go/app/parser"
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
-var port = flag.Int("port", 6379, "port to listen on")
-
 func main() {
 	storage := storage.NewStorage()
 	flag.Parse()
 
-	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", *port))
+	config := config.NewConfig()
+
+	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", config.Port))
 	if err != nil {
-		fmt.Println("Failed to bind to port", *port)
+		fmt.Println("Failed to bind to port", config.Port)
 		os.Exit(1)
 	}
 
 	for {
-		fmt.Println("Listening for connections on port", *port)
+		fmt.Println("Listening for connections on port", config.Port)
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		go handleConnection(conn, storage)
+		go handleConnection(conn, storage, config)
 	}
 
 }
 
-func handleConnection(c net.Conn, s *storage.Storage) {
+func handleConnection(c net.Conn, s *storage.Storage, config config.Config) {
 	defer c.Close()
 	client := command.RedisClient{
 		InTransaction: false,
@@ -57,7 +59,7 @@ func handleConnection(c net.Conn, s *storage.Storage) {
 				fmt.Fprintf(c, "Error ocurred while parsing: %s", err)
 				return
 			}
-			encoded, err := evaluator.EvalProgram(result, s, &client)
+			encoded, err := evaluator.EvalProgram(result, s, &client, config)
 			if err != nil {
 				fmt.Println(err)
 				fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)

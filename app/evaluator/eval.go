@@ -5,11 +5,12 @@ import (
 	"strings"
 
 	"github.com/codecrafters-io/redis-starter-go/app/command"
+	"github.com/codecrafters-io/redis-starter-go/app/config"
 	"github.com/codecrafters-io/redis-starter-go/app/parser"
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
-func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient) (string, error) {
+func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient, config config.Config) (string, error) {
 	var buf bytes.Buffer
 	switch v := n.(type) {
 	case (parser.Array):
@@ -40,7 +41,7 @@ func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient) (str
 				c.TxQueue = append(c.TxQueue, currentCmd)
 				return command.FormatSimpleString("QUEUED"), nil
 			}
-			err := currentCmd.Cmd(&command.CommandContext{Out: &buf, Args: currentCmd.Args, C: c}, s)
+			err := currentCmd.Cmd(&command.CommandContext{Out: &buf, Args: currentCmd.Args, C: c, ServerConfig: config}, s)
 			if err != nil {
 				return "", err
 			}

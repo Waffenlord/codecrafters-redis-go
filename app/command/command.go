@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/codecrafters-io/redis-starter-go/app/config"
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
@@ -23,10 +24,11 @@ type RedisClient struct {
 }
 
 type CommandContext struct {
-	In   io.Reader
-	Out  io.Writer
-	Args []string
-	C    *RedisClient
+	In           io.Reader
+	Out          io.Writer
+	Args         []string
+	C            *RedisClient
+	ServerConfig config.Config
 }
 
 type Builtin func(ctx *CommandContext, s *storage.Storage) error
@@ -639,6 +641,17 @@ func discard(ctx *CommandContext, s *storage.Storage) error {
 	return nil
 }
 
+func info(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) > 0 {
+		currentArg := ctx.Args[0]
+		switch currentArg {
+		case "replication":
+			fmt.Fprint(ctx.Out, FormatBulkString(fmt.Sprintf("role:%s", ctx.ServerConfig.Role)))
+		}
+	}
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":    echo,
 	"ping":    ping,
@@ -658,4 +671,5 @@ var CommandMenu = map[string]Builtin{
 	"multi":   multi,
 	"exec":    exec,
 	"discard": discard,
+	"info":    info,
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
-func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient, config config.Config) (string, error) {
+func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient, config *config.Config) (string, error) {
 	var buf bytes.Buffer
 	switch v := n.(type) {
 	case (parser.Array):
@@ -41,7 +41,13 @@ func EvalProgram(n parser.Node, s *storage.Storage, c *command.RedisClient, conf
 				c.TxQueue = append(c.TxQueue, currentCmd)
 				return command.FormatSimpleString("QUEUED"), nil
 			}
-			err := currentCmd.Cmd(&command.CommandContext{Out: &buf, Args: currentCmd.Args, C: c, ServerConfig: config}, s)
+			err := currentCmd.Cmd(
+				&command.CommandContext{
+					Out:          &buf,
+					Args:         currentCmd.Args,
+					C:            c,
+					ServerConfig: config,
+				}, s)
 			if err != nil {
 				return "", err
 			}

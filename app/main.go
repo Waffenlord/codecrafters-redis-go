@@ -38,7 +38,7 @@ func main() {
 
 }
 
-func handleConnection(c net.Conn, s *storage.Storage, config config.Config) {
+func handleConnection(c net.Conn, s *storage.Storage, config *config.Config) {
 	defer c.Close()
 	client := command.RedisClient{
 		InTransaction: false,

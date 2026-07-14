@@ -28,7 +28,7 @@ type CommandContext struct {
 	Out          io.Writer
 	Args         []string
 	C            *RedisClient
-	ServerConfig config.Config
+	ServerConfig *config.Config
 }
 
 type Builtin func(ctx *CommandContext, s *storage.Storage) error
@@ -646,7 +646,14 @@ func info(ctx *CommandContext, s *storage.Storage) error {
 		currentArg := ctx.Args[0]
 		switch currentArg {
 		case "replication":
-			fmt.Fprint(ctx.Out, FormatBulkString(fmt.Sprintf("role:%s", ctx.ServerConfig.Role)))
+			fmt.Fprint(
+				ctx.Out, FormatBulkString(
+					fmt.Sprintf(
+						"role:%s\r\nmaster_replid:%s\r\nmaster_repl_offset:%d\r\n",
+						ctx.ServerConfig.Role,
+						ctx.ServerConfig.MasterReplId,
+						ctx.ServerConfig.MasterReplOffset,
+					)))
 		}
 	}
 	return nil

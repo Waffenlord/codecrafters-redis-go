@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"log"
 	"net"
 	"os"
+	"strconv"
 
 	"github.com/codecrafters-io/redis-starter-go/app/command"
 	"github.com/codecrafters-io/redis-starter-go/app/config"
@@ -18,55 +21,82 @@ func main() {
 	storage := storage.NewStorage()
 	flag.Parse()
 
-	config := config.NewConfig()
+	cfg := config.NewConfig()
 
-	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", config.Port))
+	l, err := net.Listen("tcp", fmt.Sprintf("0.0.0.0:%d", cfg.Port))
 	if err != nil {
-		fmt.Println("Failed to bind to port", config.Port)
+		fmt.Println("Failed to bind to port", cfg.Port)
 		os.Exit(1)
 	}
 
+	if cfg.Role == config.SlaveRole {
+		conn, err := net.Dial(
+			"tcp",
+			net.JoinHostPort(cfg.ReplicaOfHost, strconv.Itoa(cfg.ReplicaOfPort)),
+		)
+		if err != nil {
+			fmt.Println("Error connecting to master: ", err.Error())
+			os.Exit(1)
+		}
+
+		fmt.Println("Connected to master on port", cfg.ReplicaOfPort)
+		handleClientHandshake(conn, storage, cfg)
+	}
+
 	for {
-		fmt.Println("Listening for connections on port", config.Port)
+		fmt.Println("Listening for connections on port", cfg.Port)
 		conn, err := l.Accept()
 		if err != nil {
 			fmt.Println("Error accepting connection: ", err.Error())
 			os.Exit(1)
 		}
-		go handleConnection(conn, storage, config)
+		go handleServerConnection(conn, storage, cfg)
 	}
 
 }
 
-func handleConnection(c net.Conn, s *storage.Storage, config *config.Config) {
+func handleServerConnection(c net.Conn, s *storage.Storage, config *config.Config) {
 	defer c.Close()
 	client := command.RedisClient{
 		InTransaction: false,
 		TxQueue:       nil,
 	}
+	buf := make([]byte, 4096)
 	for {
-		buf := make([]byte, 1024)
 		n, err := c.Read(buf)
 		if err != nil {
 			break
 		}
 		if n > 0 {
-			lex := lexer.NewLexer(buf)
+			lex := lexer.NewLexer(buf[:n])
 			par := parser.New(lex)
 			result, err := par.ParseProgram()
 			if err != nil {
-				fmt.Println(err)
+				log.Printf("error parsing: %s", err)
 				fmt.Fprintf(c, "Error ocurred while parsing: %s", err)
 				return
 			}
 			encoded, err := evaluator.EvalProgram(result, s, &client, config)
 			if err != nil {
-				fmt.Println(err)
+				log.Printf("error evaluating: %s", err)
 				fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)
 				return
 			}
 			c.Write([]byte(encoded))
 		}
 	}
+}
 
+func handleClientHandshake(c net.Conn, s *storage.Storage, cfg *config.Config) {
+	defer c.Close()
+	fmt.Fprint(c, command.FormatArray([]string{"PING"}))
+	status, err := bufio.NewReader(c).ReadString('\n')
+	if err != nil {
+		log.Printf("error reading response: %s", err)
+		return
+	}
+	if status != "+PONG\r\n" {
+		log.Printf("unexpected response: %s", status)
+		return
+	}
 }

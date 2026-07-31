@@ -668,6 +668,17 @@ func replconf(ctx *CommandContext, s *storage.Storage) error {
 	return nil
 }
 
+func psync(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 2 {
+		return errors.New("invalid number of arguments for PSYNC")
+	}
+
+	replicationId := ctx.Args[0]
+
+	fmt.Fprint(ctx.Out, FormatSimpleString(fmt.Sprintf("FULLRESYNC %s 0", replicationId)))
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":     echo,
 	"ping":     ping,
@@ -689,4 +700,5 @@ var CommandMenu = map[string]Builtin{
 	"discard":  discard,
 	"info":     info,
 	"replconf": replconf,
+	"psync":    psync,
 }

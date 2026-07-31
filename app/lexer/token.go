@@ -53,6 +53,7 @@ var builtinKeywords = map[string]TokenType{
 	"discard":  CMD,
 	"info":     CMD,
 	"replconf": CMD,
+	"psync":    CMD,
 }
 
 func isBuiltinCmd(s string) TokenType {

@@ -117,4 +117,15 @@ func handleClientHandshake(c net.Conn, s *storage.Storage, cfg *config.Config) {
 		log.Printf("error reading OK for second replconf: %s", err)
 		return
 	}
+
+	// psync
+	if err := sendHandshakeCommand(c, "psync", "?", "-1"); err != nil {
+		log.Printf("error sending psync: %s", err)
+		return
+	}
+
+	if err := readSimpleString(r, "FULLRESYNC ? 0"); err != nil {
+		log.Printf("error reading FULLRESYNC for psync: %s", err)
+		return
+	}
 }

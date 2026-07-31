@@ -659,24 +659,34 @@ func info(ctx *CommandContext, s *storage.Storage) error {
 	return nil
 }
 
+func replconf(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 2 {
+		return errors.New("invalid number of arguments for REPLCONF")
+	}
+
+	fmt.Fprint(ctx.Out, FormatSimpleString("OK"))
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
-	"echo":    echo,
-	"ping":    ping,
-	"set":     set,
-	"get":     get,
-	"rpush":   rpush,
-	"lrange":  lrange,
-	"lpush":   lpush,
-	"llen":    llen,
-	"lpop":    lpop,
-	"blpop":   blpop,
-	"type":    typeCmd,
-	"xadd":    xadd,
-	"xrange":  xrange,
-	"xread":   xread,
-	"incr":    incr,
-	"multi":   multi,
-	"exec":    exec,
-	"discard": discard,
-	"info":    info,
+	"echo":     echo,
+	"ping":     ping,
+	"set":      set,
+	"get":      get,
+	"rpush":    rpush,
+	"lrange":   lrange,
+	"lpush":    lpush,
+	"llen":     llen,
+	"lpop":     lpop,
+	"blpop":    blpop,
+	"type":     typeCmd,
+	"xadd":     xadd,
+	"xrange":   xrange,
+	"xread":    xread,
+	"incr":     incr,
+	"multi":    multi,
+	"exec":     exec,
+	"discard":  discard,
+	"info":     info,
+	"replconf": replconf,
 }

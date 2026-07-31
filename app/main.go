@@ -89,14 +89,32 @@ func handleServerConnection(c net.Conn, s *storage.Storage, config *config.Confi
 
 func handleClientHandshake(c net.Conn, s *storage.Storage, cfg *config.Config) {
 	defer c.Close()
-	fmt.Fprint(c, command.FormatArray([]string{"PING"}))
-	status, err := bufio.NewReader(c).ReadString('\n')
-	if err != nil {
-		log.Printf("error reading response: %s", err)
+	r := bufio.NewReader(c)
+	// Ping
+	if err := sendHandshakeCommand(c, "PING"); err != nil {
+		log.Printf("error sending PING: %s", err)
 		return
 	}
-	if status != "+PONG\r\n" {
-		log.Printf("unexpected response: %s", status)
+	if err := readSimpleString(r, "PONG"); err != nil {
+		log.Printf("error reading PONG: %s", err)
+		return
+	}
+
+	// replconf
+	if err := sendHandshakeCommand(c, "replconf", "listening-port", fmt.Sprintf("%d", cfg.Port)); err != nil {
+		log.Printf("error sending first replconf: %s", err)
+		return
+	}
+	if err := readSimpleString(r, "OK"); err != nil {
+		log.Printf("error reading OK for first replconf: %s", err)
+		return
+	}
+	if err := sendHandshakeCommand(c, "replconf", "capa", "psync2"); err != nil {
+		log.Printf("error sending second replconf: %s", err)
+		return
+	}
+	if err := readSimpleString(r, "OK"); err != nil {
+		log.Printf("error reading OK for second replconf: %s", err)
 		return
 	}
 }

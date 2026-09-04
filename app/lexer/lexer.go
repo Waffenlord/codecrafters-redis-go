@@ -69,7 +69,7 @@ func (l *Lexer) NextToken() Token {
 			}
 			tok.Literal = num
 			return tok
-		} else if l.isLetter(l.Ch) {
+		} else if l.isLetter(l.Ch) || l.isSpecialChar(l.Ch) {
 			tok.Literal = l.readString()
 			tok.Type = isBuiltinCmd(tok.Literal)
 			return tok
@@ -102,13 +102,17 @@ func (l *Lexer) readNumber() (string, bool) {
 }
 
 func (l *Lexer) isLetter(c byte) bool {
-	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || c == '_' || c == '-'
+	return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z')
+}
+
+func (l *Lexer) isSpecialChar(c byte) bool {
+	return c == '?' || c == '_' || c == '-'
 }
 
 func (l *Lexer) readString() string {
 	startP := l.position
 	for {
-		if !l.isLetter(l.Ch) && !l.isDigit(l.Ch) {
+		if !l.isLetter(l.Ch) && !l.isDigit(l.Ch) && !l.isSpecialChar(l.Ch) {
 			break
 		}
 		l.readChar()

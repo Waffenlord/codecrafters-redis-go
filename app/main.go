@@ -124,7 +124,7 @@ func handleClientHandshake(c net.Conn, s *storage.Storage, cfg *config.Config) {
 		return
 	}
 
-	if err := readSimpleString(r, "FULLRESYNC ? 0"); err != nil {
+	if err := readSimpleString(r, fmt.Sprintf("FULLRESYNC %s 0", cfg.MasterReplId)); err != nil {
 		log.Printf("error reading FULLRESYNC for psync: %s", err)
 		return
 	}

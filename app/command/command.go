@@ -673,7 +673,7 @@ func psync(ctx *CommandContext, s *storage.Storage) error {
 		return errors.New("invalid number of arguments for PSYNC")
 	}
 
-	replicationId := ctx.Args[0]
+	replicationId := ctx.ServerConfig.MasterReplId
 
 	fmt.Fprint(ctx.Out, FormatSimpleString(fmt.Sprintf("FULLRESYNC %s 0", replicationId)))
 	return nil

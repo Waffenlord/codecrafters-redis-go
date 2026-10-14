@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/codecrafters-io/redis-starter-go/app/config"
+	"github.com/codecrafters-io/redis-starter-go/app/replication"
 	"github.com/codecrafters-io/redis-starter-go/app/storage"
 )
 
@@ -676,6 +677,13 @@ func psync(ctx *CommandContext, s *storage.Storage) error {
 	replicationId := ctx.ServerConfig.MasterReplId
 
 	fmt.Fprint(ctx.Out, FormatSimpleString(fmt.Sprintf("FULLRESYNC %s 0", replicationId)))
+
+	emptyRDBFile, err := replication.GetEmptyRDB()
+	if err != nil {
+		return err
+	}
+
+	fmt.Fprint(ctx.Out, "$", len(emptyRDBFile), "\r\n", string(emptyRDBFile))
 	return nil
 }
 

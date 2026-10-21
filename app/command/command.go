@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,7 @@ type CmdToExecute struct {
 type RedisClient struct {
 	InTransaction bool
 	TxQueue       []*CmdToExecute
+	ClientConn    net.Conn
 }
 
 type CommandContext struct {
@@ -109,9 +111,9 @@ func set(ctx *CommandContext, s *storage.Storage) error {
 			currentIdx++
 		}
 	}
-
 	s.Set(key, &data)
 	fmt.Fprint(ctx.Out, FormatSimpleString("OK"))
+	ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"SET"}, ctx.Args...)))
 	return nil
 }
 
@@ -614,10 +616,11 @@ func exec(ctx *CommandContext, s *storage.Storage) error {
 	var results []string
 	for _, cmd := range ctx.C.TxQueue {
 		currentContext := CommandContext{
-			In:   ctx.In,
-			Out:  &row,
-			Args: cmd.Args,
-			C:    ctx.C,
+			In:           ctx.In,
+			Out:          &row,
+			Args:         cmd.Args,
+			C:            ctx.C,
+			ServerConfig: ctx.ServerConfig,
 		}
 		err := cmd.Cmd(&currentContext, s)
 		if err != nil {
@@ -674,8 +677,8 @@ func psync(ctx *CommandContext, s *storage.Storage) error {
 		return errors.New("invalid number of arguments for PSYNC")
 	}
 
+	ctx.ServerConfig.RegisterReplica(ctx.C.ClientConn)
 	replicationId := ctx.ServerConfig.MasterReplId
-
 	fmt.Fprint(ctx.Out, FormatSimpleString(fmt.Sprintf("FULLRESYNC %s 0", replicationId)))
 
 	emptyRDBFile, err := replication.GetEmptyRDB()

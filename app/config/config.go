@@ -4,8 +4,10 @@ import (
 	"errors"
 	"flag"
 	"log"
+	"net"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 var port = flag.Int("port", 6379, "port to listen on")
@@ -25,6 +27,8 @@ type Config struct {
 	MasterReplOffset int
 	ReplicaOfHost string
 	ReplicaOfPort int
+	Replicas map[net.Conn]struct{}
+	Mu sync.Mutex
 }
 
 func NewConfig() *Config {
@@ -48,6 +52,7 @@ func NewConfig() *Config {
 		MasterReplOffset: 0,
 		ReplicaOfHost: replicaOfHost,
 		ReplicaOfPort: replicaOfPort,
+		Replicas: make(map[net.Conn]struct{}),
 	}
 }
 
@@ -61,4 +66,23 @@ func parseReplicaOf(replicaValue string) (string, int, error) {
 		return "", 0, err
 	}
 	return parts[0], int(port), nil
+}
+
+
+func (sc *Config) RegisterReplica(c net.Conn) {
+	sc.Mu.Lock()
+	defer sc.Mu.Unlock()
+	sc.Replicas[c] = struct{}{}
+}
+
+func (sc *Config) PropagateCommand(c string) {
+	sc.Mu.Lock()
+	defer sc.Mu.Unlock()
+
+	for conn := range sc.Replicas {
+		if _, err := conn.Write([]byte(c)); err != nil {
+			delete(sc.Replicas, conn)
+			continue
+		}
+	}
 }

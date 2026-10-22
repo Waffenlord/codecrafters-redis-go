@@ -163,19 +163,22 @@ func handleCommand(
 		if n > 0 {
 			lex := lexer.NewLexer(buf[:n])
 			par := parser.New(lex)
-			result, err := par.ParseProgram()
+			resultNodes, err := par.ParseProgram()
 			if err != nil {
-				log.Printf("error parsing: %s", err)
-				fmt.Fprintf(c, "Error ocurred while parsing: %s", err)
+				log.Printf("error parsing: %w", err)
+				fmt.Fprintf(c, "Error ocurred while parsing: %w", err)
 				return
 			}
-			encoded, err := evaluator.EvalProgram(result, s, &client, cfg)
-			if err != nil {
-				log.Printf("error evaluating: %s", err)
-				fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)
-				return
+			for _, group := range resultNodes {
+				encoded, err := evaluator.EvalProgram(group, s, &client, cfg)
+				if err != nil {
+					log.Printf("error evaluating: %s", err)
+					fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)
+					return
+				}
+				c.Write([]byte(encoded))
 			}
-			c.Write([]byte(encoded))
+
 		}
 	}
 }

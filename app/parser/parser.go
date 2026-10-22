@@ -41,7 +41,19 @@ func New(lx *lexer.Lexer) *Parser {
 	return p
 }
 
-func (p *Parser) ParseProgram() (Node, error) {
+func (p *Parser) ParseProgram() ([]Node, error) {
+	var result []Node
+	for p.curToken.Type != lexer.EOF {
+		currentNode, err := p.ParseMainPrefixes()
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, currentNode)
+	}
+	return result, nil
+}
+
+func (p *Parser) ParseMainPrefixes() (Node, error) {
 	switch p.curToken.Type {
 	case lexer.ASTERISK:
 		return p.parseArray()
@@ -70,8 +82,8 @@ func (p *Parser) parseArray() (Node, error) {
 	}
 	p.nextToken()
 	p.nextToken()
-	for p.curToken.Type != lexer.EOF {
-		element, err := p.ParseProgram()
+	for i := 0; i < arr.Length; i++ {
+		element, err := p.ParseMainPrefixes()
 		if err != nil {
 			return nil, fmt.Errorf("error parsing array element: %s", err)
 		}

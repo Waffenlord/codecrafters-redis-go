@@ -66,7 +66,7 @@ func main() {
 func handleServerConnection(c net.Conn, s *storage.Storage, config *config.Config) {
 	defer c.Close()
 	r := bufio.NewReader(c)
-	handleCommand(c, r, s, config)
+	handleCommand(c, r, s, config, true)
 }
 
 func handleClientHandshake(
@@ -140,7 +140,7 @@ func handleReplication(
 	r *bufio.Reader,
 ) {
 	defer c.Close()
-	handleCommand(c, r, s, cfg)
+	handleCommand(c, r, s, cfg, false)
 }
 
 func handleCommand(
@@ -148,11 +148,13 @@ func handleCommand(
 	r *bufio.Reader,
 	s *storage.Storage,
 	cfg *config.Config,
+	expectsResponse bool,
 ) {
 	client := command.RedisClient{
-		InTransaction: false,
-		TxQueue:       nil,
-		ClientConn:    c,
+		InTransaction:   false,
+		TxQueue:         nil,
+		ClientConn:      c,
+		ExpectsResponse: expectsResponse,
 	}
 	buf := make([]byte, 4096)
 	for {

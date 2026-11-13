@@ -1,7 +1,10 @@
 package storage
 
 import (
+	"errors"
+	"strconv"
 	"sync"
+	"time"
 )
 
 type Storage struct {
@@ -38,4 +41,35 @@ func (s *Storage) Delete(key string) {
 	s.mux.Lock()
 	delete(s.data, key)
 	s.mux.Unlock()
+}
+
+func (s *Storage) Incr(key string) (int, error) {
+    s.mux.Lock()
+    defer s.mux.Unlock()
+
+    v, found := s.data[key]
+
+    if !found {
+        data := &StringType{
+            Value:     "1",
+            CreatedAt: time.Now(),
+        }
+        s.data[key] = data
+        return 1, nil
+    }
+
+    data, ok := v.(*StringType)
+    if !ok {
+        return 0, errors.New("value stored should be a string type")
+    }
+
+    parsed, err := strconv.Atoi(data.Value)
+    if err != nil {
+        return 0, errors.New("value is not an integer or out of range")
+    }
+
+    parsed++
+    data.Value = strconv.Itoa(parsed)
+
+    return parsed, nil
 }

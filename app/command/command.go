@@ -21,10 +21,9 @@ type CmdToExecute struct {
 }
 
 type RedisClient struct {
-	InTransaction   bool
-	TxQueue         []*CmdToExecute
-	ClientConn      net.Conn
-	ExpectsResponse bool
+	InTransaction bool
+	TxQueue       []*CmdToExecute
+	ClientConn    net.Conn
 }
 
 type CommandContext struct {
@@ -44,10 +43,7 @@ func ping(ctx *CommandContext, s *storage.Storage) error {
 
 func echo(ctx *CommandContext, s *storage.Storage) error {
 	result := strings.Join(ctx.Args, "")
-	if ctx.C.ExpectsResponse {
-		fmt.Fprint(ctx.Out, FormatBulkString(result))
-	}
-
+	fmt.Fprint(ctx.Out, FormatBulkString(result))
 	return nil
 }
 
@@ -116,9 +112,7 @@ func set(ctx *CommandContext, s *storage.Storage) error {
 		}
 	}
 	s.Set(key, &data)
-	if ctx.C.ExpectsResponse {
-		fmt.Fprint(ctx.Out, FormatSimpleString("OK"))
-	}
+	fmt.Fprint(ctx.Out, FormatSimpleString("OK"))
 	ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"SET"}, ctx.Args...)))
 	return nil
 }
@@ -171,9 +165,7 @@ func rpush(ctx *CommandContext, s *storage.Storage) error {
 			listLength = newList.AppendR(values[i])
 		}
 		s.Set(key, newList)
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatInteger(listLength))
-		}
+		fmt.Fprint(ctx.Out, FormatInteger(listLength))
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"RPUSH"}, ctx.Args...)))
 		return nil
 	}
@@ -187,9 +179,7 @@ func rpush(ctx *CommandContext, s *storage.Storage) error {
 			}
 			newLength = data.AppendR(values[i])
 		}
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatInteger(newLength))
-		}
+		fmt.Fprint(ctx.Out, FormatInteger(newLength))
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"RPUSH"}, ctx.Args...)))
 		return nil
 	default:
@@ -237,9 +227,7 @@ func lrange(ctx *CommandContext, s *storage.Storage) error {
 
 	v, found := s.Get(key)
 	if !found {
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatArray(make([]string, 0)))
-		}
+		fmt.Fprint(ctx.Out, FormatArray(make([]string, 0)))
 		return nil
 	}
 	switch data := v.(type) {
@@ -250,9 +238,7 @@ func lrange(ctx *CommandContext, s *storage.Storage) error {
 			return nil
 		}
 		result := data.LRange(cleanedStartIdx, cleanedEndIdx)
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatArray(result))
-		}
+		fmt.Fprint(ctx.Out, FormatArray(result))
 		return nil
 	default:
 		return errors.New("value stored should be a list")
@@ -279,9 +265,7 @@ func lpush(ctx *CommandContext, s *storage.Storage) error {
 			listLength = newList.AppendL(values[i])
 		}
 		s.Set(key, newList)
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatInteger(listLength))
-		}
+		fmt.Fprint(ctx.Out, FormatInteger(listLength))
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"LPUSH"}, ctx.Args...)))
 		return nil
 	}
@@ -295,9 +279,7 @@ func lpush(ctx *CommandContext, s *storage.Storage) error {
 			}
 			newLength = data.AppendL(values[i])
 		}
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatInteger(newLength))
-		}
+		fmt.Fprint(ctx.Out, FormatInteger(newLength))
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"LPUSH"}, ctx.Args...)))
 		return nil
 	default:
@@ -338,17 +320,13 @@ func lpop(ctx *CommandContext, s *storage.Storage) error {
 
 	v, found := s.Get(key)
 	if !found {
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatNullBulkString())
-		}
+		fmt.Fprint(ctx.Out, FormatNullBulkString())
 		return nil
 	}
 	switch data := v.(type) {
 	case *storage.ListType:
 		if data.Len == 0 {
-			if ctx.C.ExpectsResponse {
-				fmt.Fprint(ctx.Out, FormatNullBulkString())
-			}
+			fmt.Fprint(ctx.Out, FormatNullBulkString())
 			return nil
 		}
 		n := 1
@@ -361,13 +339,9 @@ func lpop(ctx *CommandContext, s *storage.Storage) error {
 		}
 		result := data.Lpop(n)
 		if len(result) > 1 {
-			if ctx.C.ExpectsResponse {
-				fmt.Fprint(ctx.Out, FormatArray(result))
-			}
+			fmt.Fprint(ctx.Out, FormatArray(result))
 		} else {
-			if ctx.C.ExpectsResponse {
-				fmt.Fprint(ctx.Out, FormatBulkString(result[0]))
-			}
+			fmt.Fprint(ctx.Out, FormatBulkString(result[0]))
 		}
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"LPOP"}, ctx.Args...)))
 		return nil
@@ -393,9 +367,7 @@ func blpop(ctx *CommandContext, s *storage.Storage) error {
 		if list, ok := data.(*storage.ListType); ok && list.Len > 0 {
 			values := list.Lpop(1)
 			if len(values) > 0 {
-				if ctx.C.ExpectsResponse {
-					fmt.Fprint(ctx.Out, FormatArray([]string{key, values[0]}))
-				}
+				fmt.Fprint(ctx.Out, FormatArray([]string{key, values[0]}))
 				ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"BLPOP"}, ctx.Args...)))
 				return nil
 			}
@@ -407,23 +379,17 @@ func blpop(ctx *CommandContext, s *storage.Storage) error {
 
 	if timeout == "0" {
 		v := <-ch
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatArray([]string{key, v}))
-		}
+		fmt.Fprint(ctx.Out, FormatArray([]string{key, v}))
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"BLPOP"}, ctx.Args...)))
 		return nil
 	} else {
 		select {
 		case v := <-ch:
-			if ctx.C.ExpectsResponse {
-				fmt.Fprint(ctx.Out, FormatArray([]string{key, v}))
-			}
+			fmt.Fprint(ctx.Out, FormatArray([]string{key, v}))
 			ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"BLPOP"}, ctx.Args...)))
 			return nil
 		case <-time.After(time.Duration(timeoutFloat * float64(time.Second))):
-			if ctx.C.ExpectsResponse {
-				fmt.Fprint(ctx.Out, FormatNullArray())
-			}
+			fmt.Fprint(ctx.Out, FormatNullArray())
 			return nil
 		}
 	}
@@ -478,15 +444,11 @@ func xadd(ctx *CommandContext, s *storage.Storage) error {
 	case *storage.StreamType:
 		id, err := data.Add(id, values)
 		if err != nil {
-			if ctx.C.ExpectsResponse {
-				fmt.Fprint(ctx.Out, FormatSimpleError(genericError, err.Error()))
-			}
+			fmt.Fprint(ctx.Out, FormatSimpleError(genericError, err.Error()))
 			return nil
 		}
 		s.Blocker.NotifyClient(key, "OK")
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatBulkString(id))
-		}
+		fmt.Fprint(ctx.Out, FormatBulkString(id))
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"XADD"}, ctx.Args...)))
 		return nil
 	default:
@@ -610,16 +572,11 @@ func incr(ctx *CommandContext, s *storage.Storage) error {
 	key := ctx.Args[0]
 	result, err := s.Incr(key)
 	if err != nil {
-		if ctx.C.ExpectsResponse {
-			fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "value is not an integer or out of range"))
-		}
+		fmt.Fprint(ctx.Out, FormatSimpleError(genericError, "value is not an integer or out of range"))
 		return nil
 
 	}
-
-	if ctx.C.ExpectsResponse {
-		fmt.Fprint(ctx.Out, FormatInteger(result))
-	}
+	fmt.Fprint(ctx.Out, FormatInteger(result))
 	ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{"INCR"}, ctx.Args...)))
 	return nil
 }
@@ -668,9 +625,7 @@ func exec(ctx *CommandContext, s *storage.Storage) error {
 		results = append(results, row.String())
 		row.Reset()
 	}
-	if ctx.C.ExpectsResponse {
-		fmt.Fprint(ctx.Out, FormatSimpleStringArray(results))
-	}
+	fmt.Fprint(ctx.Out, FormatSimpleStringArray(results))
 	ctx.ServerConfig.PropagateCommand(FormatArray([]string{"MULTI"}))
 	for _, replCmd := range queue {
 		ctx.ServerConfig.PropagateCommand(FormatArray(append([]string{strings.ToUpper(replCmd.Name)}, replCmd.Args...)))
@@ -717,7 +672,10 @@ func replconf(ctx *CommandContext, s *storage.Storage) error {
 	secondArg := ctx.Args[1]
 
 	if firstArg == "GETACK" && secondArg == "*" {
-		fmt.Fprint(ctx.Out, FormatArray([]string{"REPLCONF", "ACK", "0"}))
+		fmt.Fprint(
+			ctx.Out,
+			FormatArray([]string{"REPLCONF", "ACK", strconv.FormatInt(ctx.ServerConfig.MasterReplOffset, 10)}),
+		)
 		return nil
 	}
 

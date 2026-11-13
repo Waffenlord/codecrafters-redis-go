@@ -154,7 +154,6 @@ func handleCommand(
 		InTransaction:   false,
 		TxQueue:         nil,
 		ClientConn:      c,
-		ExpectsResponse: expectsResponse,
 	}
 	buf := make([]byte, 4096)
 	for {
@@ -163,7 +162,8 @@ func handleCommand(
 			break
 		}
 		if n > 0 {
-			lex := lexer.NewLexer(buf[:n])
+			incomingBytes := buf[:n]
+			lex := lexer.NewLexer(incomingBytes)
 			par := parser.New(lex)
 			resultNodes, err := par.ParseProgram()
 			if err != nil {
@@ -178,9 +178,12 @@ func handleCommand(
 					fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)
 					return
 				}
-				c.Write([]byte(encoded))
+				if expectsResponse || strings.Contains(encoded, "REPLCONF") {
+					c.Write([]byte(encoded))
+				}
+				
 			}
-
+			cfg.IncrementOffset(int64(len(incomingBytes)))
 		}
 	}
 }

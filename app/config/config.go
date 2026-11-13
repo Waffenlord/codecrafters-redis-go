@@ -24,7 +24,7 @@ type Config struct {
 	Port int
 	Role Role
 	MasterReplId string
-	MasterReplOffset int
+	MasterReplOffset int64
 	ReplicaOfHost string
 	ReplicaOfPort int
 	Replicas map[net.Conn]struct{}
@@ -85,4 +85,11 @@ func (sc *Config) PropagateCommand(c string) {
 			continue
 		}
 	}
+}
+
+func (sc *Config) IncrementOffset(count int64) {
+	sc.Mu.Lock()
+	defer sc.Mu.Unlock()
+
+	sc.MasterReplOffset += count
 }

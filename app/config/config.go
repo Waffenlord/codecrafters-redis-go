@@ -28,7 +28,7 @@ type Config struct {
 	ReplicaOfHost string
 	ReplicaOfPort int
 	Replicas map[net.Conn]struct{}
-	Mu sync.Mutex
+	Mu sync.RWMutex
 }
 
 func NewConfig() *Config {
@@ -92,4 +92,11 @@ func (sc *Config) IncrementOffset(count int64) {
 	defer sc.Mu.Unlock()
 
 	sc.MasterReplOffset += count
+}
+
+func (sc *Config) GetOffset() int64 {
+	sc.Mu.RLock()
+	defer sc.Mu.RUnlock()
+
+	return sc.MasterReplOffset
 }

@@ -8,14 +8,21 @@ import (
 	"github.com/codecrafters-io/redis-starter-go/app/lexer"
 )
 
+type ParsedNode struct {
+	N         Node
+	ByteCount int
+}
+
 type Parser struct {
-	l                *lexer.Lexer
-	curToken         lexer.Token
-	peekToken        lexer.Token
-	validStringTypes map[lexer.TokenType]struct{}
+	l                 *lexer.Lexer
+	curToken          lexer.Token
+	peekToken         lexer.Token
+	validStringTypes  map[lexer.TokenType]struct{}
+	lastConsumedToken lexer.Token
 }
 
 func (p *Parser) nextToken() {
+	p.lastConsumedToken = p.curToken
 	p.curToken = p.peekToken
 	p.peekToken = p.l.NextToken()
 }
@@ -41,14 +48,21 @@ func New(lx *lexer.Lexer) *Parser {
 	return p
 }
 
-func (p *Parser) ParseProgram() ([]Node, error) {
-	var result []Node
+func (p *Parser) ParseProgram() ([]ParsedNode, error) {
+	var result []ParsedNode
 	for p.curToken.Type != lexer.EOF {
+		start := p.curToken.StartIdx
 		currentNode, err := p.ParseMainPrefixes()
 		if err != nil {
 			return nil, err
 		}
-		result = append(result, currentNode)
+
+		end := p.lastConsumedToken.EndIdx
+
+		result = append(result, ParsedNode{
+			N:         currentNode,
+			ByteCount: end - start,
+		})
 	}
 	return result, nil
 }

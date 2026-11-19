@@ -5,8 +5,10 @@ import "strings"
 type TokenType string
 
 type Token struct {
-	Type    TokenType
-	Literal string
+	Type     TokenType
+	Literal  string
+	StartIdx int
+	EndIdx   int
 }
 
 const (
@@ -54,6 +56,7 @@ var builtinKeywords = map[string]TokenType{
 	"info":     CMD,
 	"replconf": CMD,
 	"psync":    CMD,
+	"wait":     CMD,
 }
 
 func isBuiltinCmd(s string) TokenType {
@@ -65,6 +68,6 @@ func isBuiltinCmd(s string) TokenType {
 	return STRING
 }
 
-func newToken(tokenType TokenType, literal string) Token {
-	return Token{Type: tokenType, Literal: literal}
+func newToken(tokenType TokenType, literal string, startIdx int) Token {
+	return Token{Type: tokenType, Literal: literal, StartIdx: startIdx}
 }

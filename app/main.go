@@ -151,9 +151,9 @@ func handleCommand(
 	expectsResponse bool,
 ) {
 	client := command.RedisClient{
-		InTransaction:   false,
-		TxQueue:         nil,
-		ClientConn:      c,
+		InTransaction: false,
+		TxQueue:       nil,
+		ClientConn:    c,
 	}
 	buf := make([]byte, 4096)
 	for {
@@ -171,19 +171,18 @@ func handleCommand(
 				fmt.Fprintf(c, "Error ocurred while parsing: %w", err)
 				return
 			}
-			for _, group := range resultNodes {
-				encoded, err := evaluator.EvalProgram(group, s, &client, cfg)
+			for _, parsedNode := range resultNodes {
+				encoded, err := evaluator.EvalProgram(parsedNode.N, s, &client, cfg)
 				if err != nil {
-					log.Printf("error evaluating: %s", err)
-					fmt.Fprintf(c, "Error ocurred while evaluating: %s", err)
+					log.Printf("error evaluating: %w", err)
+					fmt.Fprintf(c, "Error ocurred while evaluating: %w", err)
 					return
 				}
 				if expectsResponse || strings.Contains(encoded, "REPLCONF") {
 					c.Write([]byte(encoded))
 				}
-				
+				cfg.IncrementOffset(int64(parsedNode.ByteCount))
 			}
-			cfg.IncrementOffset(int64(len(incomingBytes)))
 		}
 	}
 }

@@ -674,7 +674,7 @@ func replconf(ctx *CommandContext, s *storage.Storage) error {
 	if firstArg == "GETACK" && secondArg == "*" {
 		fmt.Fprint(
 			ctx.Out,
-			FormatArray([]string{"REPLCONF", "ACK", strconv.FormatInt(ctx.ServerConfig.MasterReplOffset, 10)}),
+			FormatArray([]string{"REPLCONF", "ACK", strconv.FormatInt(ctx.ServerConfig.GetOffset(), 10)}),
 		)
 		return nil
 	}
@@ -701,6 +701,14 @@ func psync(ctx *CommandContext, s *storage.Storage) error {
 	return nil
 }
 
+func wait(ctx *CommandContext, s *storage.Storage) error {
+	if len(ctx.Args) < 2 {
+		return errors.New("invalid number of arguments for WAIT")
+	}
+	fmt.Fprint(ctx.Out, FormatInteger(0))
+	return nil
+}
+
 var CommandMenu = map[string]Builtin{
 	"echo":     echo,
 	"ping":     ping,
@@ -723,4 +731,5 @@ var CommandMenu = map[string]Builtin{
 	"info":     info,
 	"replconf": replconf,
 	"psync":    psync,
+	"wait":     wait,
 }

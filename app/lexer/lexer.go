@@ -28,20 +28,22 @@ func NewLexer(i []byte) *Lexer {
 func (l *Lexer) NextToken() Token {
 	var tok Token
 
+	startIdx := l.position
+
 	switch l.Ch {
 	case '*':
-		tok = newToken(ASTERISK, "*")
+		tok = newToken(ASTERISK, "*", startIdx)
 	case '$':
-		tok = newToken(DOLLAR, "$")
+		tok = newToken(DOLLAR, "$", startIdx)
 	case '\r':
 		if l.isTerminator() {
-			tok = newToken(TERMINATOR, "\r\n")
+			tok = newToken(TERMINATOR, "\r\n", startIdx)
 			l.readChar()
 		} else {
-			tok = newToken(RETURN, "\r")
+			tok = newToken(RETURN, "\r", startIdx)
 		}
 	case '\n':
-		tok = newToken(NEWLINE, "\n")
+		tok = newToken(NEWLINE, "\n", startIdx)
 	case '-':
 		if l.readPosition < len(l.input) && l.isDigit(l.input[l.readPosition]) {
 			l.readChar()
@@ -52,11 +54,12 @@ func (l *Lexer) NextToken() Token {
 				return tok
 			}
 			tok.Literal = "-" + num
+			tok.StartIdx = startIdx
 		} else {
-			tok = newToken(MINUS, "-")
+			tok = newToken(MINUS, "-", startIdx)
 		}
 	case '+':
-		tok = newToken(PLUS, "+")
+		tok = newToken(PLUS, "+", startIdx)
 	case 0:
 		tok.Type = EOF
 		return tok
@@ -68,10 +71,14 @@ func (l *Lexer) NextToken() Token {
 				tok.Type = STREAM_ID
 			}
 			tok.Literal = num
+			tok.StartIdx = startIdx
+			tok.EndIdx = l.position
 			return tok
 		} else if l.isLetter(l.Ch) || l.isSpecialChar(l.Ch) {
 			tok.Literal = l.readString()
 			tok.Type = isBuiltinCmd(tok.Literal)
+			tok.StartIdx = startIdx
+			tok.EndIdx = l.position
 			return tok
 		} else {
 			tok.Type = ILLEGAL
@@ -79,6 +86,7 @@ func (l *Lexer) NextToken() Token {
 		}
 	}
 	l.readChar()
+	tok.EndIdx = l.position
 	return tok
 }
 
